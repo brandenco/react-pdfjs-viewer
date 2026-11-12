@@ -29,9 +29,12 @@ function packageAliases(): { find: RegExp; replacement: string }[] {
 }
 
 interface Bundle {
+  /** All JavaScript, including chunks loaded on demand. */
   js: string;
+  /** The JavaScript loaded up front: everything but on-demand chunks. */
+  initialJs: string;
   css: string;
-  /** Gzipped JS size, in bytes. */
+  /** Gzipped size of the JavaScript loaded up front (not on-demand chunks), in bytes. */
   gzip: number;
   exports: string[];
 }
@@ -74,17 +77,19 @@ async function bundle(source: string, { minify = false } = {}): Promise<Bundle> 
     (output): output is Rolldown.RolldownOutput => "output" in output,
   );
   let js = "";
+  let initialJs = "";
   let css = "";
   let exports: string[] = [];
   for (const item of outputs.flatMap((output) => output.output)) {
     if (item.type === "chunk") {
       js += item.code;
+      if (!item.isDynamicEntry) initialJs += item.code;
       if (item.isEntry) exports = item.exports;
     } else if (item.fileName.endsWith(".css")) {
       css += String(item.source);
     }
   }
-  return { js, css, gzip: gzipSync(js).length, exports };
+  return { js, initialJs, css, gzip: gzipSync(initialJs).length, exports };
 }
 
 // Markers that only appear in the opinionated UI's JS.
@@ -121,6 +126,12 @@ describe("consumer bundles", { timeout: 30_000 }, () => {
     expect(fromRoot.js).not.toMatch(UI_JS);
     expect(fromRoot.css).toBe("");
     expect(fromRoot.gzip).toBe(fromHeadless.gzip);
+  });
+
+  test("search code is loaded on demand, not up front", async () => {
+    const { js, initialJs } = await bundle(HOOKS_APP);
+    expect(js).toContain("NFKC"); // the text normalization is in the output…
+    expect(initialJs).not.toContain("NFKC"); // …but only in a chunk loaded on demand
   });
 
   test("hooks alone don't pull in the rendering primitives", async () => {

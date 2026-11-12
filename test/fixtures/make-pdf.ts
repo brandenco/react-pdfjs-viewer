@@ -31,7 +31,10 @@ export function makePdf(options: MakePdfOptions): Uint8Array<ArrayBuffer> {
 
   const catalog = writer.reserve();
   const pageTree = writer.reserve();
-  const font = writer.add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  // WinAnsi, so text can include accented Latin letters (written as octal escapes).
+  const font = writer.add(
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+  );
   // Page objects are referenced by links and the outline before they're written.
   const pages = Array.from({ length: pageCount }, () => writer.reserve());
   const milestonePages = pages.filter((_, index) => (index + 1) % milestoneEvery === 0);
@@ -53,7 +56,9 @@ export function makePdf(options: MakePdfOptions): Uint8Array<ArrayBuffer> {
     const pageNumber = index + 1;
     const size = pageNumber % landscapeEvery === 0 ? LANDSCAPE : PORTRAIT;
     let text = pageText(pageNumber, pageCount, size.height, milestoneEvery);
-    if (pageNumber === 1 && firstPageAnnots.length > 0) text += `\n${linkTexts()}`;
+    if (pageNumber === 1 && firstPageAnnots.length > 0) {
+      text += `\n${linkTexts()}\n${searchTexts()}`;
+    }
     const content = writer.addStream(text);
     const annots =
       pageNumber === 1 && firstPageAnnots.length > 0
@@ -90,6 +95,17 @@ function milestoneDest(page: number): string {
 
 /** Baselines of the link texts on page 1, in the top margin above the page title. */
 const LINK_Y = { milestone: 765, named: 750, external: 735 };
+
+/**
+ * Text for search normalization, in page 1's bottom margin: a word hyphenated across
+ * two lines ("hyphen-" / "ation"), and an accented word ("café").
+ */
+function searchTexts(): string {
+  return [
+    textLine(11, 72, 96, "Search finds words split by hyphen-"),
+    textLine(11, 72, 82, "ation across lines, and caf\\351 without its accent."),
+  ].join("\n");
+}
 
 function linkTexts(): string {
   return [

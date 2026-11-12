@@ -22,6 +22,7 @@ import { loadPdfjs, type Pdfjs } from "../core/pdfjs.ts";
 import { TEXT_CONTENT_OPTIONS } from "../core/text.ts";
 import type { Rotation } from "../core/types.ts";
 import { createPageCanvas, isCancellation, releaseCanvas, releaseCanvasesIn } from "./canvas.ts";
+import { nameLinks } from "./link-names.ts";
 import { useSearchHighlights } from "./use-search-highlights.ts";
 
 export interface PdfPageProps {
@@ -112,19 +113,21 @@ function useRenderedPage(
       signal.throwIfAborted();
 
       const viewport = page.getViewport({ scale: cssScale, rotation: page.rotate + rotation });
-      await Promise.all([
+      const [, textLayerElement, annotationLayerElement] = await Promise.all([
         renderCanvas(page, viewport),
         renderTextLayer(pdfjs, page, viewport),
         renderAnnotationLayer(pdfjs, page, viewport),
       ]);
+      signal.throwIfAborted();
+      if (annotationLayerElement) nameLinks(annotationLayerElement, textLayerElement);
     }
 
     async function renderAnnotationLayer(
       pdfjs: Pdfjs,
       page: PDFPageProxy,
       viewport: PageViewport,
-    ): Promise<void> {
-      if (!linkService) return;
+    ): Promise<HTMLElement | null> {
+      if (!linkService) return null;
       // Links only, for now: other annotation types (popups, form fields) need UI and
       // styles this viewer doesn't have yet. Their appearance is drawn on the canvas.
       const annotations = (await page.getAnnotations({ intent: "display" })).filter(
@@ -136,7 +139,7 @@ function useRenderedPage(
       // Most pages have no annotations; skip the layer's DOM entirely for them.
       if (annotations.length === 0) {
         annotationHostRef.current?.replaceChildren();
-        return;
+        return null;
       }
 
       const container = document.createElement("div");
@@ -167,6 +170,7 @@ function useRenderedPage(
       signal.throwIfAborted();
 
       annotationHostRef.current?.replaceChildren(container);
+      return container;
     }
 
     async function renderCanvas(page: PDFPageProxy, viewport: PageViewport): Promise<void> {
@@ -189,7 +193,7 @@ function useRenderedPage(
       pdfjs: Pdfjs,
       page: PDFPageProxy,
       viewport: PageViewport,
-    ): Promise<void> {
+    ): Promise<HTMLElement> {
       const container = document.createElement("div");
       container.className = "rpv-text-layer";
       const layer = new pdfjs.TextLayer({
@@ -206,6 +210,7 @@ function useRenderedPage(
 
       textHostRef.current?.replaceChildren(container);
       setTextLayer(layer);
+      return container;
     }
 
     const timer = setTimeout(() => {

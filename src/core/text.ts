@@ -7,7 +7,10 @@ import type { PDFPageProxy } from "pdfjs-dist";
  * which is what lets a search match be mapped back onto the rendered text layer.
  */
 export interface PageText {
-  /** All items joined; a space is inserted after items that end a line. */
+  /**
+   * All items joined; a line break is inserted after items that end a line (which lets
+   * search tell a word hyphenated across lines from a hyphenated word).
+   */
   readonly text: string;
   /** Offset in `text` where each item starts. */
   readonly itemStarts: readonly number[];
@@ -29,7 +32,7 @@ export async function extractPageText(page: PDFPageProxy): Promise<PageText> {
     itemStarts.push(text.length);
     itemStrings.push(item.str);
     text += item.str;
-    if (item.hasEOL) text += " ";
+    if (item.hasEOL) text += "\n";
   }
   return { text, itemStarts, itemStrings };
 }

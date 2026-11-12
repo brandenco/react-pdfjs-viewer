@@ -10,6 +10,7 @@ import {
   type DocumentArgs,
 } from "../fixtures/documents.ts";
 import {
+  activeHighlightParts,
   activeHighlightText,
   isInView,
   mountedPageNumbers,
@@ -317,6 +318,14 @@ export const Links: Story = {
     );
     const [toMilestone, toLastPage, external] = links;
 
+    // Screen readers announce each link by the text it covers on the page. (pdf.js names
+    // internal links itself; external ones are named by the viewer.)
+    await waitFor(async () => {
+      await expect(toMilestone).toHaveAccessibleName("Go to milestone 2");
+      await expect(toLastPage).toHaveAccessibleName("Go to the last page");
+      await expect(external).toHaveAccessibleName("Visit example.com");
+    });
+
     // External links open in a new tab, without access to the viewer's window.
     await expect(external).toHaveAttribute("href", "https://example.com/");
     await expect(external).toHaveAttribute("target", "_blank");
@@ -557,5 +566,33 @@ export const Fullscreen: Story = {
     } finally {
       request.mockRestore();
     }
+  },
+};
+
+/**
+ * Search matches text that's written differently from the query: a word hyphenated
+ * across two lines, and an accented word. Highlights land on the original glyphs.
+ */
+export const SearchNormalization: Story = {
+  args: { document: "40 pages with extras" },
+  async play({ canvas, userEvent }) {
+    await waitForDocument(canvas, 40);
+    await userEvent.click(canvas.getByRole("button", { name: "Search" }));
+    const input = canvas.getByRole("searchbox", { name: "Find in document" });
+
+    // "hyphen-" ends one line and "ation" starts the next: one match, highlighted in both.
+    await userEvent.type(input, "hyphenation");
+    await waitFor(() => expect(input).toHaveAccessibleDescription("Result 1 of 1"), {
+      timeout: 5000,
+    });
+    await waitFor(() => expect(activeHighlightParts()).toEqual(["hyphen-", "ation"]));
+
+    // Accents are ignored by default: "cafe" finds "café".
+    await userEvent.clear(input);
+    await userEvent.type(input, "cafe");
+    await waitFor(() => expect(input).toHaveAccessibleDescription("Result 1 of 1"), {
+      timeout: 5000,
+    });
+    await waitFor(() => expect(activeHighlightText()).toBe("café"));
   },
 };

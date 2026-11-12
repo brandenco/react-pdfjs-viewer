@@ -33,6 +33,12 @@ export interface SearchOptions {
   caseSensitive?: boolean | undefined;
   /** Only match whole words. Default `false`. */
   wholeWord?: boolean | undefined;
+  /**
+   * Tell accented letters apart: "cafe" won't match "café". Default `false`: accents
+   * are ignored, as in pdf.js' own viewer. Ligatures ("ﬁ"), full-width letters and words
+   * hyphenated across lines always match their plain form.
+   */
+  matchDiacritics?: boolean | undefined;
 }
 
 export type SearchStatus = "idle" | "searching" | "done";

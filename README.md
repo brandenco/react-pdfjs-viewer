@@ -19,7 +19,8 @@ Features:
 - **Zoom**: steps, fit page / fit width, Ctrl/⌘ + wheel and trackpad pinch around the
   pointer.
 - **Search**: streams results on large documents, highlights with the CSS Custom
-  Highlight API.
+  Highlight API, and finds text however it's encoded: ligatures ("ﬁ"), full-width
+  letters, accents (optional), and words hyphenated across lines.
 - **Also**: rotation, printing, full screen, download, text selection / hand tool,
   virtualized thumbnails, document properties and permissions.
 - **Styles stay isolated**: all CSS lives in the `rpv` cascade layer, so it never
@@ -93,14 +94,15 @@ as `documentOptions={{ worker }}`.
 No JavaScript module imports CSS: you import one of the two stylesheets yourself (see
 "Styling"). Production bundlers drop whatever JavaScript you don't use, from any entry
 point. The subpaths also keep **dev servers**, which don't tree-shake, from loading UI
-code you don't use, so prefer them. Sizes, minified and gzipped, without pdf.js (a lazily loaded peer
-dependency), as checked by `pnpm test:bundle`:
+code you don't use, so prefer them. Sizes of the JavaScript loaded up front, minified and
+gzipped, as checked by `pnpm test:bundle`. pdf.js (a peer dependency) and the search code
+load on first use:
 
 | You use                   | JS      |
 | ------------------------- | ------- |
-| The provider and one hook | 5.5 kB  |
-| `PdfPages` and a hook     | 11.0 kB |
-| `<PdfViewer>`             | 19.1 kB |
+| The provider and one hook | 5.3 kB  |
+| `PdfPages` and a hook     | 11.1 kB |
+| `<PdfViewer>`             | 19.2 kB |
 
 ## Composing your own viewer
 
@@ -231,21 +233,21 @@ Each hook subscribes only to the state it returns, so a component re-renders onl
 that changes. Actions (`goToPage`, `zoomIn`, …) keep their identity across renders, so
 they're safe to pass to `onClick` or list in effect dependencies.
 
-| Hook                      | Returns                                                                                                                                                                                                                       |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `usePageNavigation()`     | `currentPage`, `numPages`, `canGoPrevious`, `canGoNext`, `goToPage(n)`, `nextPage`, `previousPage`, `firstPage`, `lastPage`, `goToDestination(dest)`                                                                          |
-| `useZoom()`               | `scale`, `mode`, `minScale`, `maxScale`, `canZoomIn`, `canZoomOut`, `setScale`, `zoomIn`, `zoomOut`, `zoomTo("page-fit" \| "page-width")`                                                                                     |
-| `useSearch()`             | `query`, `options`, `status`, `matches`, `activeIndex`, `pagesSearched`, `search(query, { caseSensitive, wholeWord })`, `next`, `previous`, `setActiveMatch`, `clear`, and the search bar's `isOpen`, `setOpen`, `toggleOpen` |
-| `useRotation()`           | `rotation`, `setRotation(degrees)`, `rotateClockwise`, `rotateCounterClockwise`                                                                                                                                               |
-| `useCursorMode()`         | `mode` (`"text"` \| `"hand"`), `setMode`, `toggle`                                                                                                                                                                            |
-| `useSidebar()`            | `isOpen`, `setOpen`, `toggle`, `view` (`"thumbnails"` \| `"outline"`), `setView`                                                                                                                                              |
-| `useDownload()`           | `download(filename?)`, `canDownload`, `isDownloading`                                                                                                                                                                         |
-| `usePrint()`              | `print({ dpi })`, `cancel`, `canPrint`, `isPrinting`, `progress`                                                                                                                                                              |
-| `useFullscreen(ref)`      | `isFullscreen`, `isSupported`, `enter`, `exit`, `toggle`, for the element in `ref`                                                                                                                                            |
-| `useOutline()`            | `status`, `items` (nested), `goToItem(item)`                                                                                                                                                                                  |
-| `usePageLabels()`         | `labels`, `labelOf(pageNumber)`, `pageNumberOf(label)`                                                                                                                                                                        |
-| `useDocumentProperties()` | `{ status, data }`: title, author, subject, dates, producer, `permissions`, `pageLabels`, raw `info` and XMP `metadata`                                                                                                       |
-| `usePdfDocument()`        | `status`, `error`, `numPages`, and the pdf.js `document`                                                                                                                                                                      |
+| Hook                      | Returns                                                                                                                                                                                                                                        |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `usePageNavigation()`     | `currentPage`, `numPages`, `canGoPrevious`, `canGoNext`, `goToPage(n)`, `nextPage`, `previousPage`, `firstPage`, `lastPage`, `goToDestination(dest)`                                                                                           |
+| `useZoom()`               | `scale`, `mode`, `minScale`, `maxScale`, `canZoomIn`, `canZoomOut`, `setScale`, `zoomIn`, `zoomOut`, `zoomTo("page-fit" \| "page-width")`                                                                                                      |
+| `useSearch()`             | `query`, `options`, `status`, `matches`, `activeIndex`, `pagesSearched`, `search(query, { caseSensitive, wholeWord, matchDiacritics })`, `next`, `previous`, `setActiveMatch`, `clear`, and the search bar's `isOpen`, `setOpen`, `toggleOpen` |
+| `useRotation()`           | `rotation`, `setRotation(degrees)`, `rotateClockwise`, `rotateCounterClockwise`                                                                                                                                                                |
+| `useCursorMode()`         | `mode` (`"text"` \| `"hand"`), `setMode`, `toggle`                                                                                                                                                                                             |
+| `useSidebar()`            | `isOpen`, `setOpen`, `toggle`, `view` (`"thumbnails"` \| `"outline"`), `setView`                                                                                                                                                               |
+| `useDownload()`           | `download(filename?)`, `canDownload`, `isDownloading`                                                                                                                                                                                          |
+| `usePrint()`              | `print({ dpi })`, `cancel`, `canPrint`, `isPrinting`, `progress`                                                                                                                                                                               |
+| `useFullscreen(ref)`      | `isFullscreen`, `isSupported`, `enter`, `exit`, `toggle`, for the element in `ref`                                                                                                                                                             |
+| `useOutline()`            | `status`, `items` (nested), `goToItem(item)`                                                                                                                                                                                                   |
+| `usePageLabels()`         | `labels`, `labelOf(pageNumber)`, `pageNumberOf(label)`                                                                                                                                                                                         |
+| `useDocumentProperties()` | `{ status, data }`: title, author, subject, dates, producer, `permissions`, `pageLabels`, raw `info` and XMP `metadata`                                                                                                                        |
+| `usePdfDocument()`        | `status`, `error`, `numPages`, and the pdf.js `document`                                                                                                                                                                                       |
 
 Outline, labels, properties and permissions are read from the document on first use,
 once per document, and shared by every component that asks.

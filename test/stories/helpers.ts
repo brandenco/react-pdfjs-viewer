@@ -30,6 +30,14 @@ export function activeHighlightText(): string | undefined {
   return range instanceof Range ? range.toString() : undefined;
 }
 
+/** The text of every range of the active search highlight (one per text item it spans). */
+export function activeHighlightParts(): string[] {
+  const highlight = CSS.highlights.get("rpv-search-active");
+  return highlight
+    ? [...highlight].map((range) => (range instanceof Range ? range.toString() : ""))
+    : [];
+}
+
 /** Whether `target` is fully inside the visible part of `container`. */
 export function isInView(
   target: { getBoundingClientRect(): DOMRect },

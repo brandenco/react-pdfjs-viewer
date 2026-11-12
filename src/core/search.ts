@@ -1,14 +1,16 @@
+import { normalizeQuery, normalizeText, type NormalizedText } from "./normalize.ts";
 import { createYielder } from "./schedule.ts";
 import type { PageText } from "./text.ts";
 import type { SearchMatch, SearchOptions } from "./types.ts";
 
 /**
- * Builds the regular expression for a search query, or `null` for an empty query.
- * Regex syntax in the query is matched literally, and any run of whitespace matches
- * any run of whitespace (PDF text often breaks lines where the query has a space).
+ * Builds the regular expression for a search query, or `null` for an empty query. It
+ * matches page text normalized with `normalizePageText` (the query is normalized the
+ * same way). Regex syntax in the query is matched literally, and any run of whitespace
+ * matches any run of whitespace (PDF text often breaks lines where the query has a space).
  */
 export function buildSearchRegExp(query: string, options: Required<SearchOptions>): RegExp | null {
-  const trimmed = query.trim();
+  const trimmed = normalizeQuery(query, { ignoreDiacritics: !options.matchDiacritics }).trim();
   if (!trimmed) return null;
 
   let pattern = escapeRegExp(trimmed).replace(/\s+/g, "\\s+");
@@ -42,6 +44,7 @@ export async function* scanPages(
   numPages: number,
   getPageText: (pageIndex: number) => Promise<PageText>,
   regex: RegExp,
+  options: Required<SearchOptions>,
   signal: AbortSignal,
 ): AsyncGenerator<SearchProgress> {
   // Cached page text resolves as a microtask, so without explicit yields a re-search
@@ -58,7 +61,10 @@ export async function* scanPages(
     await maybeYield();
     if (signal.aborted) return;
 
-    if (pageText) newMatches.push(...findMatches(pageText.text, regex, pageIndex));
+    if (pageText) {
+      const normalized = normalizePageText(pageText, !options.matchDiacritics);
+      newMatches.push(...findMatches(normalized, regex, pageIndex));
+    }
 
     const isComplete = pageIndex === numPages - 1;
     if (isComplete || performance.now() - lastReport > PROGRESS_INTERVAL_MS) {
@@ -69,13 +75,35 @@ export async function* scanPages(
   }
 }
 
-function findMatches(text: string, regex: RegExp, pageIndex: number): SearchMatch[] {
+/** Matches in normalized text, as ranges of the original page text (what's highlighted). */
+function findMatches(text: NormalizedText, regex: RegExp, pageIndex: number): SearchMatch[] {
   const matches: SearchMatch[] = [];
-  for (const match of text.matchAll(regex)) {
+  for (const match of text.text.matchAll(regex)) {
     const length = match[0].length;
-    if (length > 0) matches.push({ pageIndex, start: match.index, end: match.index + length });
+    if (length === 0) continue;
+    const { start, end } = text.toOriginal(match.index, match.index + length);
+    matches.push({ pageIndex, start, end });
   }
   return matches;
+}
+
+// Normalized once per page and setting, then reused by every later search. Keyed by the
+// PageText object, which the store caches per page and drops with the document.
+const normalizedPages = new WeakMap<PageText, Map<boolean, NormalizedText>>();
+
+/** A page's text, normalized for searching (see normalize.ts). */
+export function normalizePageText(pageText: PageText, ignoreDiacritics: boolean): NormalizedText {
+  let byOption = normalizedPages.get(pageText);
+  if (!byOption) {
+    byOption = new Map();
+    normalizedPages.set(pageText, byOption);
+  }
+  let normalized = byOption.get(ignoreDiacritics);
+  if (!normalized) {
+    normalized = normalizeText(pageText.text, { ignoreDiacritics });
+    byOption.set(ignoreDiacritics, normalized);
+  }
+  return normalized;
 }
 
 /**

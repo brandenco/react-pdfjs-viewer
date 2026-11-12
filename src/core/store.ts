@@ -9,7 +9,8 @@ import {
   type PdfDestination,
 } from "./navigation.ts";
 import { loadPdfjs } from "./pdfjs.ts";
-import { buildSearchRegExp, pickFirstActiveMatch, scanPages } from "./search.ts";
+// Type-only, so it adds no static dependency: the module itself is imported on demand.
+import type * as SearchModuleTypes from "./search.ts";
 import { extractPageText, type PageText } from "./text.ts";
 import { ThumbnailCache } from "./thumbnail-cache.ts";
 import type {
@@ -80,7 +81,7 @@ export interface StoreInternals {
 
 const EMPTY_SEARCH: SearchState = {
   query: "",
-  options: { caseSensitive: false, wholeWord: false },
+  options: { caseSensitive: false, wholeWord: false, matchDiacritics: false },
   status: "idle",
   matches: [],
   activeIndex: -1,
@@ -475,9 +476,13 @@ export class PdfViewerStore {
     this.#searchController = controller;
     this.#matchToReveal = null;
 
+    const { buildSearchRegExp, pickFirstActiveMatch, scanPages } = await loadSearch();
+    if (controller.signal.aborted) return; // a newer search, or a cleared one, took over
+
     const resolvedOptions = {
       caseSensitive: options.caseSensitive ?? false,
       wholeWord: options.wholeWord ?? false,
+      matchDiacritics: options.matchDiacritics ?? false,
     };
     const regex = buildSearchRegExp(query, resolvedOptions);
     const doc = this.#state.document;
@@ -492,7 +497,13 @@ export class PdfViewerStore {
 
     const currentPageIndex = this.#state.currentPage - 1;
     const getPageText = (pageIndex: number): Promise<PageText> => this.getPageText(pageIndex);
-    for await (const progress of scanPages(doc.numPages, getPageText, regex, controller.signal)) {
+    for await (const progress of scanPages(
+      doc.numPages,
+      getPageText,
+      regex,
+      resolvedOptions,
+      controller.signal,
+    )) {
       const matches = [...this.#state.search.matches, ...progress.newMatches];
       const hasActiveMatch = this.#state.search.activeIndex !== -1;
 
@@ -611,6 +622,18 @@ export class PdfViewerStore {
       scrollIntoView: (target) => store.#scrollIntoView(target),
     });
   }
+}
+
+type SearchModule = typeof SearchModuleTypes;
+let searchModule: Promise<SearchModule> | null = null;
+
+/**
+ * The search code (matching, text normalization) is loaded on the first search, so
+ * viewers that never search don't download it. Like pdf.js, it's a separate chunk.
+ */
+function loadSearch(): Promise<SearchModule> {
+  searchModule ??= import("./search.ts");
+  return searchModule;
 }
 
 function normalizeRotation(degrees: number): Rotation {
