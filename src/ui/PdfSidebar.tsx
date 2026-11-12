@@ -1,7 +1,5 @@
 "use client";
 
-// The sliding panel is opinionated UI, so its styles live with the toolbar's.
-import "../viewer.css";
 import {
   useEffect,
   useRef,

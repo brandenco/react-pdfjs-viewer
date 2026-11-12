@@ -1,10 +1,9 @@
 "use client";
 
-import "../viewer.css";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import type { OutlineItem } from "../core/outline.ts";
-import { useOutline } from "../headless/use-outline.ts";
+import { useOutline, useOutlineEntry, type Outline } from "../headless/use-outline.ts";
 import { ChevronRightIcon } from "./icons.tsx";
 
 export interface PdfOutlineProps {
@@ -27,12 +26,7 @@ export interface PdfOutlineProps {
 export function PdfOutline(props: PdfOutlineProps): ReactNode {
   const { className, style, emptyFallback, externalLinkTarget = "_blank" } = props;
   const outline = useOutline();
-  const context: EntryContext = {
-    onSelect: outline.goToItem,
-    externalLinkTarget,
-    currentItem: outline.currentItem,
-    currentPath: outline.currentPath,
-  };
+  const context: EntryContext = { outline, externalLinkTarget };
 
   return (
     <nav
@@ -50,10 +44,8 @@ export function PdfOutline(props: PdfOutlineProps): ReactNode {
 }
 
 interface EntryContext {
-  onSelect: (item: OutlineItem) => Promise<boolean>;
+  outline: Outline;
   externalLinkTarget: string;
-  currentItem: OutlineItem | null;
-  currentPath: readonly OutlineItem[];
 }
 
 function OutlineList(props: { items: readonly OutlineItem[]; context: EntryContext }): ReactNode {
@@ -75,14 +67,8 @@ function OutlineList(props: { items: readonly OutlineItem[]; context: EntryConte
 
 function OutlineEntry(props: { item: OutlineItem; context: EntryContext }): ReactNode {
   const { item, context } = props;
-  const hasChildren = item.items.length > 0;
-  // pdf.js reports a positive `count` for entries the document wants open.
-  const [isExpanded, setIsExpanded] = useState((item.count ?? 0) > 0);
-  const toggle = (): void => setIsExpanded(!isExpanded);
-
-  const isCurrent = item === context.currentItem;
-  // A collapsed parent stands in for the current entry hidden inside it.
-  const containsCurrent = !isExpanded && context.currentPath.includes(item);
+  const entry = useOutlineEntry(context.outline, item);
+  const { hasChildren, isExpanded, toggle, isCurrent, containsCurrent } = entry;
   const titleStyle: CSSProperties = {
     fontWeight: item.bold ? 600 : undefined,
     fontStyle: item.italic ? "italic" : undefined,
@@ -132,9 +118,7 @@ function OutlineEntry(props: { item: OutlineItem; context: EntryContext }): Reac
         className="rpv-outline-title"
         style={titleStyle}
         aria-current={isCurrent ? "location" : undefined}
-        onClick={() => {
-          context.onSelect(item).catch(reportError);
-        }}
+        onClick={entry.select}
       >
         {item.title}
       </button>

@@ -148,6 +148,7 @@ const Thumbnail = memo(function Thumbnail(props: ThumbnailProps) {
           label === String(pageIndex + 1) ? `Page ${label}` : `Page ${label} (${pageIndex + 1})`
         }
         aria-current={isCurrent ? "page" : undefined}
+        data-current={isCurrent ? "" : undefined}
         onClick={() => store.goToPage(pageIndex + 1)}
       >
         <canvas

@@ -1,10 +1,8 @@
 "use client";
 
-import "../viewer.css";
 import {
   createContext,
   use,
-  useEffect,
   useId,
   useMemo,
   useRef,
@@ -13,7 +11,7 @@ import {
   type RefObject,
 } from "react";
 
-import { useSearch } from "../headless/hooks.ts";
+import { useFindShortcut } from "../headless/use-find-shortcut.ts";
 
 /** What the shell shares with the UI components inside it. */
 interface ShellContextValue {
@@ -53,9 +51,7 @@ export function PdfViewerShell(props: PdfViewerShellProps): ReactNode {
   const rootRef = useRef<HTMLDivElement>(null);
   const sidebarId = useId();
   const searchBarId = useId();
-  const { setOpen: setSearchOpen } = useSearch();
-
-  useFindShortcut(rootRef, () => setSearchOpen(true));
+  useFindShortcut(rootRef);
 
   const shell = useMemo(
     () => ({ sidebarId, searchBarId, searchShortcut: FIND_SHORTCUT, rootRef }),
@@ -89,26 +85,4 @@ export function PdfViewerBody(props: PdfViewerBodyProps): ReactNode {
       {children}
     </div>
   );
-}
-
-/** Calls `onFind` for Cmd+F / Ctrl+F while focus is inside `rootRef`, instead of the browser's find. */
-function useFindShortcut(rootRef: RefObject<HTMLElement | null>, onFind: () => void): void {
-  const onFindRef = useRef(onFind);
-  useEffect(() => {
-    onFindRef.current = onFind;
-  });
-
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-
-    function onKeyDown(event: KeyboardEvent): void {
-      if ((event.metaKey || event.ctrlKey) && event.key === "f") {
-        event.preventDefault();
-        onFindRef.current();
-      }
-    }
-    root.addEventListener("keydown", onKeyDown);
-    return () => root.removeEventListener("keydown", onKeyDown);
-  }, [rootRef]);
 }

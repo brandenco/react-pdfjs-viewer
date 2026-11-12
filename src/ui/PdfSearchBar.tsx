@@ -1,24 +1,15 @@
 "use client";
 
-import {
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-  type RefObject,
-} from "react";
+import { useId, useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
 
 import { usePdfViewerState } from "../headless/context.tsx";
-import { useSearch, type Search } from "../headless/hooks.ts";
+import { useSearchField } from "../headless/use-search-field.ts";
+import { withClassName, type StyleProps } from "./class-names.ts";
 import { ChevronDownIcon, ChevronUpIcon, CloseIcon } from "./icons.tsx";
-import { isImeConfirmation } from "./keyboard.ts";
 import { useShell } from "./PdfViewerShell.tsx";
 import { ToolbarButton } from "./ToolbarButton.tsx";
 
-export interface PdfSearchBarProps {
+export interface PdfSearchBarProps extends StyleProps {
   /**
    * Called by Escape and the close button. When given, you control when the bar is
    * shown. When omitted, the bar follows the shared `useSearch().isOpen` state: it
@@ -31,7 +22,10 @@ export interface PdfSearchBarProps {
   debounce?: number | undefined;
 }
 
-/** Search-as-you-type box with a match counter and previous / next match buttons. */
+/**
+ * Search-as-you-type box with a match counter and previous / next match buttons, built
+ * on `useSearchField()`.
+ */
 export function PdfSearchBar(props: PdfSearchBarProps): ReactNode {
   const isOpen = usePdfViewerState((state) => state.isSearchOpen);
   if (!props.onClose && !isOpen) return null;
@@ -43,59 +37,43 @@ function SearchBar({
   debounce = 250,
   ...props
 }: PdfSearchBarProps): ReactNode {
-  const search = useSearch();
   const shell = useShell();
   const id = props.id ?? shell?.searchBarId;
+  const field = useSearchField({ debounce, onEscape: onCloseProp });
+  const { search } = field;
   const onClose = onCloseProp ?? (() => search.setOpen(false));
-  const [query, setQuery] = useState(search.query);
   const barRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const countId = useId();
 
   useFocusWhileOpen(barRef, inputRef);
 
-  const startSearch = search.search;
-  useEffect(() => {
-    const timer = setTimeout(() => void startSearch(query), debounce);
-    return () => clearTimeout(timer);
-  }, [query, debounce, startSearch]);
-
-  function onKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
-    if (event.key === "Escape") {
-      onClose();
-    } else if (event.key === "Enter") {
-      event.preventDefault();
-      if (isImeConfirmation(event)) return;
-      if (event.shiftKey) search.previous();
-      else search.next();
-    }
-  }
-
   const hasMatches = search.matches.length > 0;
 
   return (
-    <search ref={barRef} id={id} className="rpv-search-bar">
+    <search
+      ref={barRef}
+      id={id}
+      className={withClassName("rpv-search-bar", props.className)}
+      style={props.style}
+    >
       <input
+        {...field.inputProps}
         ref={inputRef}
         className="rpv-input"
-        type="search"
         aria-label="Find in document"
         aria-describedby={countId}
-        aria-keyshortcuts="Enter Shift+Enter"
         placeholder="Find in document"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        onKeyDown={onKeyDown}
       />
 
       <span id={countId} className="rpv-search-count">
         {/* "3 / 12+" for the eye, "Result 3 of 12, still searching" for screen readers. */}
-        <span aria-hidden="true">{shortCountLabel(search)}</span>
-        <span className="rpv-visually-hidden">{spokenCountLabel(search)}</span>
+        <span aria-hidden="true">{field.countLabel}</span>
+        <span className="rpv-visually-hidden">{field.spokenCountLabel}</span>
       </span>
       {/* Announced only once the search finishes; the count changes rapidly while scanning. */}
       <span className="rpv-visually-hidden" aria-live="polite">
-        {search.status === "done" ? spokenCountLabel(search) : ""}
+        {field.announcement}
       </span>
 
       <ToolbarButton label="Previous match" disabled={!hasMatches} onClick={search.previous}>
@@ -131,29 +109,4 @@ function useFocusWhileOpen(
       if (focusIsInBar && previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
     };
   }, [barRef, inputRef]);
-}
-
-/** "3 / 12", with a "+" while pages are still being scanned. */
-function shortCountLabel(search: Search): string {
-  if (search.query.trim() === "") return "";
-
-  const total = search.matches.length;
-  const isSearching = search.status === "searching";
-  if (total === 0) return isSearching ? "…" : "No results";
-
-  const position = search.activeIndex === -1 ? "–" : String(search.activeIndex + 1);
-  return `${position} / ${total}${isSearching ? "+" : ""}`;
-}
-
-/** The same count as a sentence, e.g. "Result 3 of 12, still searching". */
-function spokenCountLabel(search: Search): string {
-  if (search.query.trim() === "") return "";
-
-  const total = search.matches.length;
-  const isSearching = search.status === "searching";
-  if (total === 0) return isSearching ? "Searching" : "No results";
-
-  const position = search.activeIndex === -1 ? "" : `Result ${search.activeIndex + 1} of `;
-  const count = position ? String(total) : `${total} results`;
-  return `${position}${count}${isSearching ? ", still searching" : ""}`;
 }

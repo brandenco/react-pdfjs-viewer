@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   PdfPages,
   PdfThumbnails,
@@ -14,6 +14,7 @@ import {
   PdfViewer,
   PdfViewerBody,
   PdfViewerShell,
+  ZoomControls,
 } from "react-pdfjs-viewer/ui";
 import { expect, waitFor } from "storybook/test";
 
@@ -117,5 +118,38 @@ export const CustomToolbarOpensSearch: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Close search" }));
     await expect(find).toHaveAttribute("aria-expanded", "false");
     await expect(canvas.queryByRole("searchbox")).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * `className` and `style` go on each component's root and add to ours, so helpers
+ * that return both (StyleX's `stylex.props()`, for one) can be spread straight in.
+ */
+export const StyleProps: Story = {
+  render: (_args, { loaded }) => {
+    // What `stylex.props(styles.toolbar)` returns: atomic classes plus inline variables.
+    const style: CSSProperties & Record<`--${string}`, string> = { "--x-gap": "12px" };
+    const fromStylex = { className: "x1abc x2def", style };
+    return (
+      <PdfViewerProvider src={loadedDocument(loaded)} workerSrc={workerSrc}>
+        <style>{`.app-toolbar { border-block-end-color: rgb(255, 0, 0); }`}</style>
+        <PdfViewerShell>
+          <PdfToolbar className="app-toolbar" />
+          <ZoomControls {...fromStylex} />
+          <PdfViewerBody>
+            <PdfPages />
+          </PdfViewerBody>
+        </PdfViewerShell>
+      </PdfViewerProvider>
+    );
+  },
+  async play({ canvasElement }) {
+    const toolbar = canvasElement.querySelector(".rpv-toolbar");
+    await expect(toolbar).toHaveClass("rpv-toolbar app-toolbar");
+    // A plain, single-class rule of the app's beats the library's styling.
+    await expect(toolbar && getComputedStyle(toolbar).borderBottomColor).toBe("rgb(255, 0, 0)");
+
+    const zoom = canvasElement.querySelector<HTMLElement>(".rpv-zoom-controls.x1abc.x2def");
+    await expect(zoom?.style.getPropertyValue("--x-gap")).toBe("12px");
   },
 };

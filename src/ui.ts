@@ -26,6 +26,7 @@ export { PageControls } from "./ui/PageControls.tsx";
 export { ZoomControls } from "./ui/ZoomControls.tsx";
 export { CursorModeSwitch } from "./ui/CursorModeSwitch.tsx";
 export { ToolbarButton, type ToolbarButtonProps } from "./ui/ToolbarButton.tsx";
+export type { StyleProps } from "./ui/class-names.ts";
 export {
   DownloadButton,
   FullscreenButton,
@@ -35,4 +36,5 @@ export {
   SidebarToggleButton,
   type FullscreenButtonProps,
   type SearchToggleButtonProps,
+  type SidebarToggleButtonProps,
 } from "./ui/ToolbarButtons.tsx";

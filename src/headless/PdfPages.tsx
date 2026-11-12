@@ -106,6 +106,7 @@ export function PdfPages(props: PdfPagesProps): ReactNode {
     },
   });
   usePageScroller(containerRef, layout, store, scrollAnchor);
+  useWarnWithoutCoreStyles(containerRef);
   usePinchZoom(containerRef, store, scrollAnchor);
   const panHandlers = useHandPan(cursorMode === "hand");
 
@@ -468,4 +469,24 @@ function usePinchZoom(
       container.removeEventListener("gesturechange", onGestureChange);
     };
   }, [containerRef, store, scrollAnchor]);
+}
+
+let hasWarnedAboutStyles = false;
+
+/**
+ * Without core.css, pages stack up unpositioned and the text layer shows as visible
+ * text, which is confusing to debug, so say what's missing. core.css sets a marker
+ * property on the page list.
+ */
+function useWarnWithoutCoreStyles(containerRef: RefObject<HTMLElement | null>): void {
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || hasWarnedAboutStyles) return;
+    if (getComputedStyle(container).getPropertyValue("--_rpv-core").trim() !== "") return;
+    hasWarnedAboutStyles = true;
+    console.warn(
+      'react-pdfjs-viewer: styles not found. Import "react-pdfjs-viewer/ui.css" (the ' +
+        'default look) or "react-pdfjs-viewer/core.css" (just what the viewer needs to work).',
+    );
+  }, [containerRef]);
 }

@@ -1,33 +1,25 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 import { usePageNavigation } from "../headless/hooks.ts";
-import { usePageLabels } from "../headless/use-page-labels.ts";
+import { usePageField } from "../headless/use-page-field.ts";
+import { withClassName, type StyleProps } from "./class-names.ts";
 import { ChevronLeftIcon, ChevronRightIcon } from "./icons.tsx";
-import { isImeConfirmation } from "./keyboard.ts";
 import { ToolbarButton } from "./ToolbarButton.tsx";
 
 /**
- * Previous / next buttons around an editable "page N of M" field. For documents with
- * page labels, the field shows and accepts labels ("iv"), with the number alongside.
+ * Previous / next buttons around an editable "page N of M" field (`usePageField()`).
+ * For documents with page labels, the field shows and accepts labels ("iv"), with the
+ * number alongside.
  */
-export function PageControls(): ReactNode {
+export function PageControls(props: StyleProps): ReactNode {
   const navigation = usePageNavigation();
-  const { labels, labelOf, pageNumberOf } = usePageLabels();
-  // What the user is typing; `null` shows the current page instead.
-  const [typedPage, setTypedPage] = useState<string | null>(null);
+  const field = usePageField();
   const pageCountId = useId();
 
-  function goToTypedPage(): void {
-    if (typedPage === null) return;
-    const pageNumber = pageNumberOf(typedPage);
-    if (pageNumber !== null) navigation.goToPage(pageNumber);
-    setTypedPage(null);
-  }
-
   return (
-    <>
+    <div className={withClassName("rpv-page-controls", props.className)} style={props.style}>
       <ToolbarButton
         label="Previous page"
         disabled={!navigation.canGoPrevious}
@@ -37,27 +29,14 @@ export function PageControls(): ReactNode {
       </ToolbarButton>
 
       <input
+        {...field.inputProps}
         className="rpv-input rpv-page-input"
         aria-label="Page number"
         // Read out with the field, so screen readers hear "Page number, 12, of 5000".
         aria-describedby={pageCountId}
-        inputMode={labels ? "text" : "numeric"}
-        enterKeyHint="go"
-        autoComplete="off"
-        value={typedPage ?? labelOf(navigation.currentPage)}
-        disabled={navigation.numPages === 0}
-        onChange={(event) => setTypedPage(event.target.value)}
-        onFocus={(event) => event.target.select()}
-        onBlur={goToTypedPage}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && !isImeConfirmation(event)) goToTypedPage();
-          if (event.key === "Escape") setTypedPage(null);
-        }}
       />
       <span id={pageCountId} className="rpv-page-count">
-        {labels
-          ? `(${navigation.currentPage} of ${navigation.numPages})`
-          : `of ${navigation.numPages}`}
+        {field.countLabel}
       </span>
 
       <ToolbarButton
@@ -67,6 +46,6 @@ export function PageControls(): ReactNode {
       >
         <ChevronRightIcon />
       </ToolbarButton>
-    </>
+    </div>
   );
 }

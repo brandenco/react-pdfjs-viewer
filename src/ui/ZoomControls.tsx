@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import type { ZoomPreset } from "../core/types.ts";
 import { useZoom } from "../headless/hooks.ts";
+import { withClassName, type StyleProps } from "./class-names.ts";
 import { MinusIcon, PlusIcon } from "./icons.tsx";
 import { ToolbarButton } from "./ToolbarButton.tsx";
 
@@ -15,7 +16,7 @@ const ZOOM_PRESETS: { value: ZoomPreset; label: string }[] = [
 const ZOOM_LEVELS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
 
 /** Zoom out / in buttons around a select with the fit presets and common zoom levels. */
-export function ZoomControls(): ReactNode {
+export function ZoomControls(props: StyleProps): ReactNode {
   const zoom = useZoom();
 
   // The select's value is the preset name, or the scale as a string.
@@ -30,7 +31,7 @@ export function ZoomControls(): ReactNode {
   }
 
   return (
-    <>
+    <div className={withClassName("rpv-zoom-controls", props.className)} style={props.style}>
       <ToolbarButton label="Zoom out" disabled={!zoom.canZoomOut} onClick={zoom.zoomOut}>
         <MinusIcon />
       </ToolbarButton>
@@ -57,7 +58,7 @@ export function ZoomControls(): ReactNode {
       <ToolbarButton label="Zoom in" disabled={!zoom.canZoomIn} onClick={zoom.zoomIn}>
         <PlusIcon />
       </ToolbarButton>
-    </>
+    </div>
   );
 }
 

@@ -17,6 +17,7 @@ const config: StorybookConfig = {
         alias: [
           { find: /^react-pdfjs-viewer\/headless$/, replacement: source("headless.ts") },
           { find: /^react-pdfjs-viewer\/ui$/, replacement: source("ui.ts") },
+          { find: /^react-pdfjs-viewer\/(core|ui)\.css$/, replacement: source("css/$1.css") },
           { find: /^react-pdfjs-viewer$/, replacement: source("index.ts") },
         ],
       },

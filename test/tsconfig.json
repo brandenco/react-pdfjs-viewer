@@ -18,5 +18,5 @@
       "react-pdfjs-viewer/ui": ["../src/ui.ts"]
     }
   },
-  "include": [".", ".storybook"]
+  "include": [".", ".storybook", "../scripts"]
 }

@@ -38,6 +38,8 @@ npm install react-pdfjs-viewer pdfjs-dist
 import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url"; // see "pdf.js worker" below
 import { PdfViewer } from "react-pdfjs-viewer/ui";
 
+import "react-pdfjs-viewer/ui.css"; // once, anywhere in your app; see "Styling"
+
 <div style={{ height: 800 }}>
   <PdfViewer src="/file.pdf" workerSrc={workerSrc} />
 </div>;
@@ -80,22 +82,25 @@ as `documentOptions={{ worker }}`.
 
 ## Entry points
 
-| Import                        | What's in it                                                                                                                                                                   |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `react-pdfjs-viewer/headless` | The provider, the store, every hook, and the rendering primitives `PdfPages` and `PdfThumbnails`. Loads only `styles.css` (layout of pages, text and link layers, thumbnails). |
-| `react-pdfjs-viewer/ui`       | The opinionated components: `PdfViewer`, `PdfToolbar` and its buttons, `PdfSidebar`, `PdfOutline`, `PdfSearchBar`, the shell. Each loads `viewer.css`.                         |
-| `react-pdfjs-viewer`          | Both of the above.                                                                                                                                                             |
+| Import                        | What's in it                                                                                                                  |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `react-pdfjs-viewer/headless` | The provider, the store, every hook, and the rendering primitives `PdfPages` and `PdfThumbnails`.                             |
+| `react-pdfjs-viewer/ui`       | The opinionated components: `PdfViewer`, `PdfToolbar` and its buttons, `PdfSidebar`, `PdfOutline`, `PdfSearchBar`, the shell. |
+| `react-pdfjs-viewer`          | Both of the above.                                                                                                            |
+| `react-pdfjs-viewer/core.css` | The styles the viewer needs to work.                                                                                          |
+| `react-pdfjs-viewer/ui.css`   | `core.css` plus the default look.                                                                                             |
 
-Production bundlers drop whatever you don't use, from any entry point. The subpaths also
-keep **dev servers**, which don't tree-shake, from loading UI code and CSS you don't use,
-so prefer them. Sizes, minified and gzipped, without pdf.js (a lazily loaded peer
+No JavaScript module imports CSS: you import one of the two stylesheets yourself (see
+"Styling"). Production bundlers drop whatever JavaScript you don't use, from any entry
+point. The subpaths also keep **dev servers**, which don't tree-shake, from loading UI
+code you don't use, so prefer them. Sizes, minified and gzipped, without pdf.js (a lazily loaded peer
 dependency), as checked by `pnpm test:bundle`:
 
 | You use                   | JS      |
 | ------------------------- | ------- |
 | The provider and one hook | 5.5 kB  |
-| `PdfPages` and a hook     | 10.9 kB |
-| `<PdfViewer>`             | 18.3 kB |
+| `PdfPages` and a hook     | 11.0 kB |
+| `<PdfViewer>`             | 19.1 kB |
 
 ## Composing your own viewer
 
@@ -188,9 +193,11 @@ function Sidebar() {
 
 Build any interface on the hooks. They must be used inside `<PdfViewerProvider>`, and
 `<PdfPages>` (or your own renderer, see below) shows the pages. Nothing from
-`react-pdfjs-viewer/ui`, nor its CSS, ends up in your bundle.
+`react-pdfjs-viewer/ui` ends up in your bundle. Import `core.css` for the page layout,
+text selection and search highlights, and style everything else yourself.
 
 ```tsx
+import "react-pdfjs-viewer/core.css";
 import {
   PdfPages,
   PdfViewerProvider,
@@ -243,6 +250,34 @@ they're safe to pass to `onClick` or list in effect dependencies.
 Outline, labels, properties and permissions are read from the document on first use,
 once per document, and shared by every component that asks.
 
+**Building your own controls.** The default UI's interaction logic is available as hooks
+that return props to spread on your own elements, so your controls behave the same:
+
+```tsx
+import { useRef } from "react";
+import { usePageField, useSearchField, useFindShortcut } from "react-pdfjs-viewer/headless";
+
+function Controls() {
+  const page = usePageField(); // labels, typing, Enter / Escape, IME-safe
+  const find = useSearchField({ debounce: 250 }); // search as you type, Enter / Shift+Enter, Escape
+  const ref = useRef<HTMLDivElement>(null);
+  useFindShortcut(ref); // Cmd/Ctrl+F opens the search instead of the browser's
+
+  return (
+    <div ref={ref}>
+      <input {...page.inputProps} aria-label="Page" /> {page.countLabel}
+      {find.search.isOpen && <input {...find.inputProps} aria-label="Find" />}
+      <output aria-label="Results">{find.countLabel}</output>
+    </div>
+  );
+}
+```
+
+`useSearchField` also returns `spokenCountLabel` ("Result 3 of 12") and `announcement`
+(for an `aria-live` region; filled in once the search is done). For an outline tree of
+your own, `useOutlineEntry(outline, item)` gives each entry its expanded state, whether
+it's the current one (or a collapsed parent of it), and `select()`.
+
 **Rendering primitives.** `<PdfPages>` is the scrollable, virtualized page list, with
 canvas, selectable text, search highlights and clickable links. `<PdfThumbnails>` is the
 virtualized thumbnail list. Both are unstyled beyond layout, and take `className` and
@@ -288,20 +323,66 @@ refuses when the document disallows printing, unless you pass
 
 ## Styling
 
-`styles.css` (the headless layout) is imported by the provider, and `viewer.css` (the
-toolbar, sidebar, outline and search bar) only by the UI components, so headless setups
-never load the latter. Every rule sits in `@layer rpv`, so your styles always win.
-Theme it by setting `--rpv-*` tokens on the viewer or any ancestor (including `:root`):
-`--rpv-background`, `--rpv-surface`, `--rpv-surface-muted`, `--rpv-surface-active`,
-`--rpv-text`, `--rpv-text-muted`, `--rpv-border`, `--rpv-accent`, `--rpv-radius`,
-`--rpv-page-background`, `--rpv-highlight`, `--rpv-highlight-active`, `--rpv-selection`.
-The defaults follow the page's `color-scheme` through `light-dark()`. To nest the styles
-inside one of your own layers, import them explicitly:
+Import one stylesheet, once (in your app's entry, or a global CSS file):
 
-```css
-@import "react-pdfjs-viewer/styles.css" layer(vendor);
-@import "react-pdfjs-viewer/viewer.css" layer(vendor); /* only with the UI components */
-```
+| Stylesheet                    | Use it when                                                                                                                                                                                                                                    |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `react-pdfjs-viewer/ui.css`   | You use the UI components and want the default look. Includes `core.css`.                                                                                                                                                                      |
+| `react-pdfjs-viewer/core.css` | You style everything yourself (headless, or the UI components restyled from scratch). Only what the viewer needs to work: page layout for virtualization, the selectable text and link layers, search highlights, the thumbnail list's layout. |
+
+Without either, `<PdfPages>` warns in the console. Every rule is in a cascade layer
+(`rpv.core`, `rpv.ui`) and every selector is wrapped in `:where()`, so it has zero
+specificity. Your styles win:
+
+- **Plain CSS** that isn't in a layer always beats ours, at any specificity.
+- **In a layer**, place ours below yours. With Tailwind v4, for example, import ours into
+  its `components` layer so utility classes override it:
+
+  ```css
+  @import "tailwindcss";
+  @import "react-pdfjs-viewer/ui.css" layer(components);
+  ```
+
+  Even in the same layer as yours, our zero-specificity rules lose to any selector you
+  write.
+
+**Theming.** Set the `--rpv-*` tokens on the viewer or any ancestor (including `:root`);
+they apply to everything inside. The defaults follow the page's `color-scheme` through
+`light-dark()`: `--rpv-background`, `--rpv-surface`, `--rpv-surface-muted`,
+`--rpv-surface-active`, `--rpv-text`, `--rpv-text-muted`, `--rpv-border`, `--rpv-accent`,
+`--rpv-radius`, `--rpv-duration`, `--rpv-page-background`, `--rpv-page-shadow`, and,
+from `core.css`, `--rpv-highlight`, `--rpv-highlight-active`, `--rpv-highlight-underline`,
+`--rpv-selection`.
+
+**`className` and `style`.** Every component takes both, on its root element. Your class
+is added to ours, never replaces it. That also makes style helpers that return both work
+directly, such as StyleX's: `<PdfToolbar {...stylex.props(styles.toolbar)} />`.
+
+**What to target.** These class names and state attributes are public API and stay
+stable across minor versions; anything else in the markup may change.
+
+| Element                                 | Class                                        | State                                            |
+| --------------------------------------- | -------------------------------------------- | ------------------------------------------------ |
+| Viewer frame (`PdfViewerShell`)         | `rpv-viewer`                                 |                                                  |
+| Row under the toolbar (`PdfViewerBody`) | `rpv-viewer-body`                            |                                                  |
+| Page list (`PdfPages`)                  | `rpv-pages`                                  | `data-cursor="text" \| "hand"`, `data-dragging`  |
+| One page                                | `rpv-page`                                   | `data-page-number`                               |
+| Loading / error message                 | `rpv-status`                                 |                                                  |
+| Thumbnail list (`PdfThumbnails`)        | `rpv-thumbnails`                             |                                                  |
+| One thumbnail (button)                  | `rpv-thumbnail`                              | `data-current`                                   |
+| Thumbnail image / label                 | `rpv-thumbnail-image`, `rpv-thumbnail-label` |                                                  |
+| Toolbar                                 | `rpv-toolbar`                                |                                                  |
+| Toolbar group / separator               | `rpv-toolbar-group`, `rpv-toolbar-separator` |                                                  |
+| Any toolbar button                      | `rpv-button`                                 | `aria-disabled`, `aria-pressed`, `aria-expanded` |
+| Page field and its buttons              | `rpv-page-controls`                          |                                                  |
+| Zoom buttons and select                 | `rpv-zoom-controls`                          |                                                  |
+| Cursor mode switch                      | `rpv-segmented`                              |                                                  |
+| Search bar                              | `rpv-search-bar`                             |                                                  |
+| Sidebar                                 | `rpv-sidebar`                                | `data-open`                                      |
+| Sidebar view tabs                       | `rpv-sidebar-views`                          |                                                  |
+| Outline                                 | `rpv-outline`                                |                                                  |
+| One outline row                         | `rpv-outline-row`                            | `data-current`, `data-contains-current`          |
+| Outline entry title / chevron           | `rpv-outline-title`, `rpv-outline-toggle`    | `aria-expanded`, `aria-current="location"`       |
 
 ## Upgrading from earlier versions
 
@@ -311,8 +392,13 @@ The changes to be aware of:
 - `PdfToolbar`'s `isSearchOpen` / `onSearchOpenChange` props are now optional: without
   them it uses the shared `useSearch().isOpen`. `PdfSearchBar`'s `onClose` is optional the
   same way (without it, the bar shows itself while `isOpen`).
-- The sidebar's styles moved from `styles.css` to `viewer.css`. `PdfSidebar` imports
-  `viewer.css` itself; only setups that `@import` the CSS by hand need to add it.
+- **Styles are no longer imported for you.** Add `import "react-pdfjs-viewer/ui.css"`
+  once (or `core.css` for headless setups). `styles.css` and `viewer.css` are gone: their
+  contents are now in `core.css` and `ui.css`, split by what's needed to work and what's
+  appearance. All selectors now have zero specificity, and the layers are `rpv.core` and
+  `rpv.ui` instead of `rpv`.
+- Every UI component takes `className` and `style`. `PageControls` and `ZoomControls`
+  now render a wrapping element (`rpv-page-controls`, `rpv-zoom-controls`).
 - The toolbar's sidebar button is now labelled "Sidebar" (it was "Thumbnails"), since
   the sidebar can show the outline too. Tests that find it by name need updating.
 - The default toolbar has new buttons (rotate, full screen, print), and `PdfPages`
@@ -348,7 +434,10 @@ Tests live in `test/`:
   supported version. It's a separate file because Storybook's test runner allows only one
   story project per Vitest config.
 - `test/bundle/`: builds consumer apps against `dist/` through the package's `exports`, and
-  checks that headless imports never reach the UI or `viewer.css` (in the bundle, and in
-  the static import graph a dev server would load), plus gzip size budgets.
+  checks that headless imports never reach the UI (in the bundle, and in the static import
+  graph a dev server would load), that no JavaScript imports CSS, and gzip size budgets.
+  Also checks the published CSS: layers, and that every selector has zero specificity.
+- `scripts/build-css.ts`: builds `dist/core.css` and `dist/ui.css` from `src/css/` with
+  Lightning CSS, inlining `core.css` into `ui.css` and wrapping selectors in `:where()`.
 - `test/fixtures/`: PDFs generated in memory, so tests need no network or binary files.
   The "extras" fixture adds an outline, links, page labels and document info.

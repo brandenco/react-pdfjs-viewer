@@ -6,6 +6,7 @@ import { usePdfViewerState } from "../headless/context.tsx";
 import { useDownload, useRotation, useSearch, useSidebar } from "../headless/hooks.ts";
 import { useFullscreen } from "../headless/use-fullscreen.ts";
 import { usePrint } from "../headless/use-print.ts";
+import type { StyleProps } from "./class-names.ts";
 import {
   DownloadIcon,
   EnterFullscreenIcon,
@@ -25,13 +26,20 @@ import { ToolbarButton } from "./ToolbarButton.tsx";
 // `reportError` surfaces a failed action like any uncaught error, without leaving an
 // unhandled promise rejection behind.
 
+export interface SidebarToggleButtonProps extends StyleProps {
+  /** `id` of the sidebar. Default: set by `<PdfViewerShell>`. */
+  controls?: string | undefined;
+}
+
 /** Opens and closes the sidebar. */
-export function SidebarToggleButton(props: { controls?: string | undefined }): ReactNode {
+export function SidebarToggleButton(props: SidebarToggleButtonProps): ReactNode {
   const sidebar = useSidebar();
   const shell = useShell();
   const sidebarId = props.controls ?? shell?.sidebarId;
   return (
     <ToolbarButton
+      className={props.className}
+      style={props.style}
       label="Sidebar"
       aria-expanded={sidebar.isOpen}
       aria-controls={sidebarId}
@@ -42,7 +50,7 @@ export function SidebarToggleButton(props: { controls?: string | undefined }): R
   );
 }
 
-export interface SearchToggleButtonProps {
+export interface SearchToggleButtonProps extends StyleProps {
   /** Default: the shared `useSearch().isOpen`. */
   isOpen?: boolean | undefined;
   /** Default: `useSearch().setOpen`. */
@@ -62,6 +70,8 @@ export function SearchToggleButton(props: SearchToggleButtonProps): ReactNode {
   const searchBarId = props.controls ?? shell?.searchBarId;
   return (
     <ToolbarButton
+      className={props.className}
+      style={props.style}
       label="Search"
       aria-expanded={isOpen}
       // Only reference the search bar while it exists in the DOM.
@@ -75,21 +85,29 @@ export function SearchToggleButton(props: SearchToggleButtonProps): ReactNode {
 }
 
 /** Rotates every page a quarter turn clockwise. */
-export function RotateButton(): ReactNode {
+export function RotateButton(props: StyleProps): ReactNode {
   const { rotateClockwise } = useRotation();
   const hasDocument = usePdfViewerState((state) => state.document !== null);
   return (
-    <ToolbarButton label="Rotate clockwise" disabled={!hasDocument} onClick={rotateClockwise}>
+    <ToolbarButton
+      className={props.className}
+      style={props.style}
+      label="Rotate clockwise"
+      disabled={!hasDocument}
+      onClick={rotateClockwise}
+    >
       <RotateClockwiseIcon />
     </ToolbarButton>
   );
 }
 
 /** Prints the document. Disabled when its permissions don't allow printing. */
-export function PrintButton(): ReactNode {
+export function PrintButton(props: StyleProps): ReactNode {
   const { print, canPrint, isPrinting, progress } = usePrint();
   return (
     <ToolbarButton
+      className={props.className}
+      style={props.style}
       label={
         progress
           ? `Preparing to print: page ${progress.pagesRendered} of ${progress.pageCount}`
@@ -106,7 +124,7 @@ export function PrintButton(): ReactNode {
   );
 }
 
-export interface FullscreenButtonProps {
+export interface FullscreenButtonProps extends StyleProps {
   /** The element to show fullscreen. Default: the surrounding `<PdfViewerShell>`. */
   target?: RefObject<Element | null> | undefined;
 }
@@ -118,6 +136,8 @@ export function FullscreenButton(props: FullscreenButtonProps): ReactNode {
   if (!fullscreen.isSupported || (!props.target && !shell)) return null;
   return (
     <ToolbarButton
+      className={props.className}
+      style={props.style}
       label="Full screen"
       aria-pressed={fullscreen.isFullscreen}
       onClick={() => {
@@ -132,10 +152,12 @@ export function FullscreenButton(props: FullscreenButtonProps): ReactNode {
 const NO_TARGET: RefObject<Element | null> = { current: null };
 
 /** Saves the original PDF. */
-export function DownloadButton(): ReactNode {
+export function DownloadButton(props: StyleProps): ReactNode {
   const { download, canDownload, isDownloading } = useDownload();
   return (
     <ToolbarButton
+      className={props.className}
+      style={props.style}
       label="Download"
       disabled={!canDownload || isDownloading}
       onClick={() => {

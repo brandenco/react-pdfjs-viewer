@@ -1,10 +1,123 @@
 /*
- * Styles for the opinionated UI (`react-pdfjs-viewer/ui`): the <PdfViewer> shell,
- * toolbar, controls, search bar and sidebar. Imported by those components only, so
- * headless setups never ship it. Uses the tokens defined in styles.css, in the same
- * `rpv` layer.
+ * react-pdfjs-viewer UI styles: the look of the default viewer. Includes core.css.
+ *
+ *   import "react-pdfjs-viewer/ui.css";
+ *   @import "react-pdfjs-viewer/ui.css" layer(components);   (placed in your cascade)
+ *
+ * Overriding: every selector is wrapped in :where() in the published file, so any rule
+ * of yours wins over these, even in the same layer. For colors and spacing, set the
+ * public --rpv-* tokens on the viewer or any ancestor. The class names and state
+ * attributes you can rely on are listed in the README ("Styling").
  */
-@layer rpv {
+@layer rpv.core, rpv.ui;
+@import "./core.css";
+
+@layer rpv.ui {
+  /* ---------------------------------------------------------------------------
+   * Tokens. Private `--_rpv-*` values resolve the public `--rpv-*` overrides. They're
+   * defined on every element of ours, not just the viewer's root, so each component
+   * works on its own (a toolbar outside a viewer, say), and an override set on any
+   * element applies to everything inside it.
+   * ------------------------------------------------------------------------- */
+  :where([class^="rpv-"], [class*=" rpv-"]) {
+    /* Fallback for browsers without light-dark(): follow the OS preference. */
+    --_rpv-background: var(--rpv-background, #e5e5e5);
+    --_rpv-surface: var(--rpv-surface, #fff);
+    --_rpv-surface-muted: var(--rpv-surface-muted, #f3f3f3);
+    --_rpv-surface-active: var(--rpv-surface-active, #e5e5e5);
+    --_rpv-text: var(--rpv-text, #262626);
+    --_rpv-text-muted: var(--rpv-text-muted, #6b6b6b);
+    --_rpv-border: var(--rpv-border, #d4d4d4);
+    --_rpv-accent: var(--rpv-accent, #2563eb);
+
+    @media (prefers-color-scheme: dark) {
+      --_rpv-background: var(--rpv-background, #1a1a1a);
+      --_rpv-surface: var(--rpv-surface, #262626);
+      --_rpv-surface-muted: var(--rpv-surface-muted, #2e2e2e);
+      --_rpv-surface-active: var(--rpv-surface-active, #3a3a3a);
+      --_rpv-text: var(--rpv-text, #e5e5e5);
+      --_rpv-text-muted: var(--rpv-text-muted, #a3a3a3);
+      --_rpv-border: var(--rpv-border, #404040);
+      --_rpv-accent: var(--rpv-accent, #60a5fa);
+    }
+
+    @supports (color: light-dark(white, black)) {
+      --_rpv-background: var(--rpv-background, light-dark(#e5e5e5, #1a1a1a));
+      --_rpv-surface: var(--rpv-surface, light-dark(#fff, #262626));
+      --_rpv-surface-muted: var(--rpv-surface-muted, light-dark(#f3f3f3, #2e2e2e));
+      --_rpv-surface-active: var(--rpv-surface-active, light-dark(#e5e5e5, #3a3a3a));
+      --_rpv-text: var(--rpv-text, light-dark(#262626, #e5e5e5));
+      --_rpv-text-muted: var(--rpv-text-muted, light-dark(#6b6b6b, #a3a3a3));
+      --_rpv-border: var(--rpv-border, light-dark(#d4d4d4, #404040));
+      --_rpv-accent: var(--rpv-accent, light-dark(#2563eb, #60a5fa));
+    }
+
+    /* Page "paper" doesn't change with the color scheme. */
+    --_rpv-page-background: var(--rpv-page-background, #fff);
+    --_rpv-page-shadow: var(--rpv-page-shadow, 0 1px 3px rgb(0 0 0 / 0.25));
+    --_rpv-radius: var(--rpv-radius, 8px);
+    --_rpv-duration: var(--rpv-duration, 220ms);
+    --_rpv-ease: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  /* ---------------------------------------------------------------------------
+   * The look of the headless primitives: pages and thumbnails.
+   * ------------------------------------------------------------------------- */
+  .rpv-pages {
+    background: var(--_rpv-background);
+  }
+  .rpv-page {
+    background: var(--_rpv-page-background);
+    box-shadow: var(--_rpv-page-shadow);
+  }
+  /* Loading and error messages. */
+  .rpv-status {
+    display: block;
+    margin: 0;
+    padding: 48px 16px;
+    /* Full-strength text: muted text on the page background is below 4.5:1 contrast. */
+    color: var(--_rpv-text);
+    text-align: center;
+  }
+  .rpv-annotation-layer .linkAnnotation > a {
+    &:hover {
+      background: color-mix(in srgb, var(--_rpv-accent) 15%, transparent);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--_rpv-accent);
+      outline-offset: 1px;
+    }
+  }
+  .rpv-thumbnails {
+    background: var(--_rpv-surface-muted);
+  }
+  .rpv-thumbnail {
+    color: var(--_rpv-text-muted);
+
+    &[data-current] {
+      color: var(--_rpv-text);
+    }
+    &:focus-visible {
+      outline: none;
+    }
+  }
+  .rpv-thumbnail-image {
+    background: var(--_rpv-page-background);
+    box-shadow: var(--_rpv-page-shadow);
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+
+    [data-current] > & {
+      outline-color: var(--_rpv-accent);
+    }
+    :focus-visible > & {
+      outline: 2px dashed var(--_rpv-accent);
+    }
+  }
+  .rpv-thumbnail-label {
+    font-size: 12px;
+  }
+
   /* ---------------------------------------------------------------------------
    * Default viewer shell + toolbar
    * ------------------------------------------------------------------------- */
@@ -61,6 +174,12 @@
     &[data-align="end"] {
       justify-content: flex-end;
     }
+  }
+  .rpv-page-controls,
+  .rpv-zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
   .rpv-toolbar-separator {
     inline-size: 1px;

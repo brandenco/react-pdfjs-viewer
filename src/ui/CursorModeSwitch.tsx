@@ -4,6 +4,7 @@ import { useId, type ReactNode } from "react";
 
 import type { CursorMode } from "../core/types.ts";
 import { useCursorMode } from "../headless/hooks.ts";
+import { withClassName, type StyleProps } from "./class-names.ts";
 import { HandIcon, TextCursorIcon } from "./icons.tsx";
 
 const CURSOR_MODES: { mode: CursorMode; label: string; icon: ReactNode }[] = [
@@ -16,12 +17,12 @@ const CURSOR_MODES: { mode: CursorMode; label: string; icon: ReactNode }[] = [
  * is a radio group (native radios): one Tab stop, arrow keys switch modes, and screen
  * readers announce "Text selection, radio button, 1 of 2, checked".
  */
-export function CursorModeSwitch(): ReactNode {
+export function CursorModeSwitch(props: StyleProps): ReactNode {
   const cursor = useCursorMode();
   const groupName = useId();
 
   return (
-    <fieldset className="rpv-segmented">
+    <fieldset className={withClassName("rpv-segmented", props.className)} style={props.style}>
       <legend className="rpv-visually-hidden">Cursor mode</legend>
       {CURSOR_MODES.map(({ mode, label, icon }) => (
         <label key={mode} className="rpv-segment" title={label}>

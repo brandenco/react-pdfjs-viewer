@@ -1,17 +1,17 @@
 "use client";
 
-import "../viewer.css";
 import { useId, type ReactNode } from "react";
 
 import type { SidebarView } from "../core/types.ts";
 import { useSidebar } from "../headless/hooks.ts";
+import { withClassName, type StyleProps } from "./class-names.ts";
 
 const VIEWS: { view: SidebarView; label: string }[] = [
   { view: "thumbnails", label: "Pages" },
   { view: "outline", label: "Outline" },
 ];
 
-export interface PdfSidebarViewSwitchProps {
+export interface PdfSidebarViewSwitchProps extends StyleProps {
   /** The views to offer, in order. Default: thumbnails and outline. */
   views?: readonly SidebarView[] | undefined;
 }
@@ -28,7 +28,7 @@ export function PdfSidebarViewSwitch(props: PdfSidebarViewSwitchProps): ReactNod
   const options = views ? VIEWS.filter(({ view }) => views.includes(view)) : VIEWS;
 
   return (
-    <fieldset className="rpv-sidebar-views">
+    <fieldset className={withClassName("rpv-sidebar-views", props.className)} style={props.style}>
       <legend className="rpv-visually-hidden">Sidebar view</legend>
       {options.map(({ view, label }) => (
         <label key={view} className="rpv-sidebar-view">

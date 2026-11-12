@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { withClassName, type StyleProps } from "./class-names.ts";
 import { CursorModeSwitch } from "./CursorModeSwitch.tsx";
 import { PageControls } from "./PageControls.tsx";
 import {
@@ -14,7 +15,7 @@ import {
 } from "./ToolbarButtons.tsx";
 import { ZoomControls } from "./ZoomControls.tsx";
 
-export interface PdfToolbarProps {
+export interface PdfToolbarProps extends StyleProps {
   /** Controls the search button's state yourself. Default: the shared `useSearch().isOpen`. */
   isSearchOpen?: boolean | undefined;
   /** Called by the search button. Default: `useSearch().setOpen`. */
@@ -42,7 +43,7 @@ export function PdfToolbar(props: PdfToolbarProps): ReactNode {
   const { isSearchOpen, onSearchOpenChange, searchBarId, sidebarId, searchShortcut } = props;
 
   return (
-    <div className="rpv-toolbar">
+    <div className={withClassName("rpv-toolbar", props.className)} style={props.style}>
       <div className="rpv-toolbar-group">
         <SidebarToggleButton controls={sidebarId} />
         <span className="rpv-toolbar-separator" />

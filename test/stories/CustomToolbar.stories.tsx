@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   PdfPages,
   PdfSidebar,
@@ -12,6 +12,7 @@ import {
   useZoom,
   type PdfSource,
 } from "react-pdfjs-viewer";
+import { useFindShortcut, usePageField, useSearchField } from "react-pdfjs-viewer/headless";
 import { expect, waitFor } from "storybook/test";
 
 import {
@@ -128,5 +129,79 @@ export const HooksOnly: Story = {
     const results = canvas.getByRole("status", { name: "Search results" });
     await waitFor(() => expect(results).toHaveTextContent("1 of 1"), { timeout: 5000 });
     await waitFor(() => expect(activeHighlightText()).toBe("Milestone 3"));
+  },
+};
+
+/**
+ * The interaction hooks on plain HTML elements: the page field and search field logic of
+ * the default UI, with none of its components or styles.
+ */
+function InteractionToolbar(): ReactNode {
+  const page = usePageField();
+  const find = useSearchField();
+  const rootRef = useRef<HTMLDivElement>(null);
+  useFindShortcut(rootRef);
+
+  return (
+    <div ref={rootRef} style={{ display: "flex", gap: 8, padding: 8, alignItems: "center" }}>
+      <label>
+        Go to page <input {...page.inputProps} size={4} />
+      </label>
+      <span>{page.countLabel}</span>
+      {find.search.isOpen && (
+        <label>
+          Search <input {...find.inputProps} />
+        </label>
+      )}
+      <output aria-label="Result count">{find.countLabel}</output>
+      <output aria-label="Announcement">{find.announcement}</output>
+      <PdfPages style={{ position: "fixed", inset: "60px 16px 16px", height: "auto" }} />
+    </div>
+  );
+}
+
+export const InteractionHooks: Story = {
+  args: { document: "40 pages with extras" },
+  render: (_args, { loaded }) => (
+    <PdfViewerProvider src={loadedDocument(loaded)} workerSrc={workerSrc}>
+      <InteractionToolbar />
+    </PdfViewerProvider>
+  ),
+  async play({ canvas, userEvent }) {
+    // The page field shows labels, and accepts them.
+    const pageField = canvas.getByRole("textbox", { name: "Go to page" });
+    await waitFor(() => expect(pageField).toHaveValue("i"), { timeout: 20_000 });
+    await userEvent.clear(pageField);
+    await userEvent.type(pageField, "5{Enter}");
+    await expect(canvas.getByText("(7 of 40)")).toBeInTheDocument();
+    // Escape reverts what was typed.
+    await userEvent.clear(pageField);
+    await userEvent.type(pageField, "30{Escape}");
+    await expect(pageField).toHaveValue("5");
+
+    // Cmd/Ctrl+F (scoped to the toolbar here) opens the search, which searches as you type.
+    pageField.focus();
+    await userEvent.keyboard("{Control>}f{/Control}");
+    const searchField = await canvas.findByRole("searchbox", { name: "Search" });
+    await userEvent.type(searchField, "Milestone");
+    // Five matches (page 1 links to "milestone 2" too). The reader is on page 7, so the
+    // first one after it is active: milestone 1, on page 10.
+    await waitFor(
+      () =>
+        expect(canvas.getByRole("status", { name: "Announcement" })).toHaveTextContent(
+          "Result 2 of 5",
+        ),
+      {
+        timeout: 5000,
+      },
+    );
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(canvas.getByRole("status", { name: "Result count" })).toHaveTextContent("3 / 5"),
+    );
+
+    // Escape closes it, by default through the shared search state.
+    await userEvent.keyboard("{Escape}");
+    await expect(canvas.queryByRole("searchbox")).toBeNull();
   },
 };

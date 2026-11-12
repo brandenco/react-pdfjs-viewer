@@ -1,10 +1,8 @@
 "use client";
 
-// Styles for the opinionated UI. Imported by the components that need them, so
-// headless setups never load them.
-import "../viewer.css";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
+import { withClassName } from "./class-names.ts";
 export interface ToolbarButtonProps extends Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
   "type" | "disabled" | "aria-label"
@@ -19,12 +17,12 @@ export interface ToolbarButtonProps extends Omit<
 }
 
 export function ToolbarButton(props: ToolbarButtonProps): ReactNode {
-  const { label, disabled = false, onClick, ...buttonProps } = props;
+  const { label, disabled = false, onClick, className, ...buttonProps } = props;
   return (
     <button
       {...buttonProps}
       type="button"
-      className="rpv-button"
+      className={withClassName("rpv-button", className)}
       aria-label={label}
       aria-disabled={disabled || undefined}
       onClick={disabled ? undefined : onClick}

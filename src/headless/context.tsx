@@ -1,8 +1,5 @@
 "use client";
 
-// Imported here, not in the index barrel: bundlers can skip side-effect-free re-export
-// modules, but every viewer renders this provider.
-import "../styles.css";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import {
   createContext,

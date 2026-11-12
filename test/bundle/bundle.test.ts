@@ -1,11 +1,13 @@
 // Builds small consumer apps against the published `dist/` (through the package's
 // `exports` map) and checks what ends up in their bundles: that headless imports never
-// pull in the opinionated UI or its CSS, and that unused primitives are dropped.
+// pull in the opinionated UI, that no JS imports any CSS (users import it themselves),
+// and that unused primitives are dropped. Also checks the published CSS files.
 // Run with `pnpm test:bundle`, which builds the package first.
 import { readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { gzipSync } from "node:zlib";
 
+import { transform } from "lightningcss";
 import { build, type Rolldown } from "vite";
 import { describe, expect, test } from "vitest";
 
@@ -85,9 +87,8 @@ async function bundle(source: string, { minify = false } = {}): Promise<Bundle> 
   return { js, css, gzip: gzipSync(js).length, exports };
 }
 
-// Markers that only appear in the opinionated UI's JS and in viewer.css.
+// Markers that only appear in the opinionated UI's JS.
 const UI_JS = /rpv-toolbar|rpv-search-bar|rpv-sidebar-inner|function PdfViewer\b/;
-const UI_CSS = /\.rpv-toolbar|\.rpv-search-bar|\.rpv-sidebar-inner/;
 
 const HEADLESS_APP = (from: string): string => `
   import { PdfViewerProvider, PdfPages, useZoom } from "${from}";
@@ -107,19 +108,18 @@ const VIEWER_APP = `
 `;
 
 describe("consumer bundles", { timeout: 30_000 }, () => {
-  test("headless subpath ships no UI code and no viewer.css", async () => {
+  test("headless subpath ships no UI code", async () => {
     const { js, css } = await bundle(HEADLESS_APP("react-pdfjs-viewer/headless"));
     expect(js).toContain("rpv-pages");
     expect(js).not.toMatch(UI_JS);
-    expect(css).toContain(".rpv-page");
-    expect(css).not.toMatch(UI_CSS);
+    expect(css).toBe(""); // styles are the app's to import
   });
 
   test("the root entry tree-shakes to the same headless bundle", async () => {
     const fromRoot = await bundle(HEADLESS_APP("react-pdfjs-viewer"));
     const fromHeadless = await bundle(HEADLESS_APP("react-pdfjs-viewer/headless"));
     expect(fromRoot.js).not.toMatch(UI_JS);
-    expect(fromRoot.css).not.toMatch(UI_CSS);
+    expect(fromRoot.css).toBe("");
     expect(fromRoot.gzip).toBe(fromHeadless.gzip);
   });
 
@@ -135,14 +135,14 @@ describe("consumer bundles", { timeout: 30_000 }, () => {
       import { ZoomControls } from "react-pdfjs-viewer/ui";
       export default () => <PdfViewerProvider src="/a.pdf"><ZoomControls /><PdfPages /></PdfViewerProvider>;
     `);
-    expect(css).toContain(".rpv-button");
+    expect(css).toBe("");
     expect(js).not.toMatch(/rpv-search-bar|rpv-thumbnails|function PdfViewer\b/);
   });
 
   test("the complete viewer includes the UI", async () => {
     const { js, css } = await bundle(VIEWER_APP);
     expect(js).toMatch(UI_JS);
-    expect(css).toMatch(UI_CSS);
+    expect(css).toBe("");
   });
 
   // Minified and gzipped, as shipped. pdf.js itself is a lazily imported peer dependency,
@@ -200,9 +200,66 @@ function importGraph(entry: string): string[] {
 }
 
 describe("static import graph (what dev servers load)", () => {
-  test("headless never reaches ui/ or viewer.css", () => {
+  test("headless never reaches ui/", () => {
     const files = importGraph("headless.js");
-    expect(files).toContain("styles.css");
-    expect(files.filter((file) => file.startsWith("ui") || file === "viewer.css")).toEqual([]);
+    expect(files).toContain("headless/PdfPages.js");
+    expect(files.filter((file) => file.startsWith("ui"))).toEqual([]);
+  });
+
+  test("no module imports CSS", () => {
+    const files = importGraph("index.js");
+    expect(files).toContain("ui/PdfViewer.js");
+    expect(files.filter((file) => file.endsWith(".css"))).toEqual([]);
+  });
+});
+
+/** Whether each selector of each style rule in `css` has zero specificity. */
+function selectorSpecificity(css: string): { selector: string; isZero: boolean }[] {
+  const results: { selector: string; isZero: boolean }[] = [];
+  transform({
+    filename: "published.css",
+    code: Buffer.from(css),
+    visitor: {
+      Rule: {
+        style(rule) {
+          for (const selector of rule.value.selectors) {
+            const [first] = selector;
+            // Wrapped in :where(), or a bare pseudo-element like ::highlight().
+            const isZero =
+              first?.type === "pseudo-element" ||
+              (first?.type === "pseudo-class" && first.kind === "where");
+            results.push({ selector: JSON.stringify(selector), isZero });
+          }
+        },
+      },
+    },
+  });
+  return results;
+}
+
+function readDist(file: string): string {
+  return readFileSync(new URL(`dist/${file}`, root), "utf8");
+}
+
+describe("published CSS", () => {
+  test("core.css has only the core layer; ui.css includes it, then its own", () => {
+    const core = readDist("core.css");
+    const ui = readDist("ui.css");
+    expect(core).toContain("@layer rpv.core");
+    expect(core).not.toContain("rpv.ui");
+    expect(core).not.toContain("rpv-toolbar");
+    expect(ui.indexOf("@layer rpv.core")).toBeLessThan(ui.indexOf("@layer rpv.ui"));
+    expect(ui).toContain(".rpv-text-layer");
+    expect(ui).not.toContain("@import");
+  });
+
+  test("every selector has zero specificity", () => {
+    for (const file of ["core.css", "ui.css"]) {
+      const results = selectorSpecificity(readDist(file));
+      expect(results.length).toBeGreaterThan(20);
+      expect(results.filter((result) => !result.isZero).map((result) => result.selector)).toEqual(
+        [],
+      );
+    }
   });
 });

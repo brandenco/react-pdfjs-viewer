@@ -1,61 +1,26 @@
 /*
- * react-pdfjs-viewer styles.
+ * react-pdfjs-viewer core styles: only what the viewer needs to work. Page layout for
+ * virtualization, the selectable text layer, the link layer, search highlights, and the
+ * thumbnail list's layout. No colors or decoration beyond the highlights; those are in
+ * ui.css, which includes this file.
  *
- * Everything lives in the `rpv` cascade layer. Layered rules always lose to unlayered
- * rules, so these can never override the host app's styles, and any app rule (even a
- * low-specificity one) can override them.
- *
- * Theming: set any public `--rpv-*` token on the viewer or an ancestor (e.g. `:root`).
- * Defaults follow the host page's `color-scheme` via `light-dark()`; set
- * `color-scheme: dark` (or `light`) on the viewer to force one.
+ * Import it once: `import "react-pdfjs-viewer/core.css"`, or
+ * `@import "react-pdfjs-viewer/core.css" layer(your-layer);` to place it in your cascade.
+ * In the published file every selector is wrapped in :where(), so any rule of yours wins
+ * over these, even inside the same layer.
  */
-@layer rpv {
-  /* ---------------------------------------------------------------------------
-   * Tokens. Private `--_rpv-*` values resolve public `--rpv-*` overrides first.
-   * ------------------------------------------------------------------------- */
-  :where(.rpv-viewer, .rpv-pages, .rpv-sidebar, .rpv-thumbnails) {
-    /* Fallback for browsers without light-dark(): follow the OS preference. */
-    --_rpv-background: var(--rpv-background, #e5e5e5);
-    --_rpv-surface: var(--rpv-surface, #fff);
-    --_rpv-surface-muted: var(--rpv-surface-muted, #f3f3f3);
-    --_rpv-surface-active: var(--rpv-surface-active, #e5e5e5);
-    --_rpv-text: var(--rpv-text, #262626);
-    --_rpv-text-muted: var(--rpv-text-muted, #6b6b6b);
-    --_rpv-border: var(--rpv-border, #d4d4d4);
-    --_rpv-accent: var(--rpv-accent, #2563eb);
+@layer rpv.core {
+  /* Marks that this file is loaded; <PdfPages> warns in the console when it isn't. */
+  :where(.rpv-pages) {
+    --_rpv-core: 1;
+  }
 
-    @media (prefers-color-scheme: dark) {
-      --_rpv-background: var(--rpv-background, #1a1a1a);
-      --_rpv-surface: var(--rpv-surface, #262626);
-      --_rpv-surface-muted: var(--rpv-surface-muted, #2e2e2e);
-      --_rpv-surface-active: var(--rpv-surface-active, #3a3a3a);
-      --_rpv-text: var(--rpv-text, #e5e5e5);
-      --_rpv-text-muted: var(--rpv-text-muted, #a3a3a3);
-      --_rpv-border: var(--rpv-border, #404040);
-      --_rpv-accent: var(--rpv-accent, #60a5fa);
-    }
-
-    @supports (color: light-dark(white, black)) {
-      --_rpv-background: var(--rpv-background, light-dark(#e5e5e5, #1a1a1a));
-      --_rpv-surface: var(--rpv-surface, light-dark(#fff, #262626));
-      --_rpv-surface-muted: var(--rpv-surface-muted, light-dark(#f3f3f3, #2e2e2e));
-      --_rpv-surface-active: var(--rpv-surface-active, light-dark(#e5e5e5, #3a3a3a));
-      --_rpv-text: var(--rpv-text, light-dark(#262626, #e5e5e5));
-      --_rpv-text-muted: var(--rpv-text-muted, light-dark(#6b6b6b, #a3a3a3));
-      --_rpv-border: var(--rpv-border, light-dark(#d4d4d4, #404040));
-      --_rpv-accent: var(--rpv-accent, light-dark(#2563eb, #60a5fa));
-    }
-
-    /* Page "paper" and on-paper colors don't change with the color scheme. */
-    --_rpv-page-background: var(--rpv-page-background, #fff);
-    --_rpv-page-shadow: var(--rpv-page-shadow, 0 1px 3px rgb(0 0 0 / 0.25));
+  /* Highlight and selection colors, overridable with the public --rpv-* tokens. */
+  :where(.rpv-pages) {
     --_rpv-highlight: var(--rpv-highlight, rgb(255 200 0 / 0.45));
     --_rpv-highlight-active: var(--rpv-highlight-active, rgb(255 120 0 / 0.55));
     --_rpv-highlight-underline: var(--rpv-highlight-underline, #b45309);
     --_rpv-selection: var(--rpv-selection, rgb(0 100 255 / 0.25));
-    --_rpv-radius: var(--rpv-radius, 8px);
-    --_rpv-duration: var(--rpv-duration, 220ms);
-    --_rpv-ease: cubic-bezier(0.2, 0, 0, 1);
   }
 
   /* ---------------------------------------------------------------------------
@@ -66,7 +31,6 @@
     block-size: 100%;
     overflow: auto;
     overscroll-behavior: contain;
-    background: var(--_rpv-background);
     contain: strict;
 
     &[data-cursor="hand"] {
@@ -88,15 +52,6 @@
     padding: 0;
     list-style: none;
   }
-  /* Loading and error messages. */
-  .rpv-status {
-    display: block;
-    margin: 0;
-    padding: 48px 16px;
-    /* Full-strength text: muted text on the page background is below 4.5:1 contrast. */
-    color: var(--_rpv-text);
-    text-align: center;
-  }
   .rpv-page {
     --scale-round-x: 1px;
     --scale-round-y: 1px;
@@ -104,8 +59,6 @@
     position: absolute;
     inset-inline: 0;
     margin-inline: auto;
-    background: var(--_rpv-page-background);
-    box-shadow: var(--_rpv-page-shadow);
     overflow: hidden;
     contain: strict;
   }
@@ -120,7 +73,7 @@
     }
   }
 
-  /* Text layer — mirrors pdf.js' own .textLayer rules (physical properties on
+  /* Text layer: mirrors pdf.js' own .textLayer rules (physical properties on
      purpose: pdf.js positions glyphs in page space, not writing-mode space). */
   .rpv-text-layer {
     position: absolute;
@@ -254,13 +207,6 @@
       block-size: 100%;
       font-size: 1em;
     }
-    .linkAnnotation > a:hover {
-      background: color-mix(in srgb, var(--_rpv-accent) 15%, transparent);
-    }
-    .linkAnnotation > a:focus-visible {
-      outline: 2px solid var(--_rpv-accent);
-      outline-offset: 1px;
-    }
     /* Text the link covers, for screen readers. */
     .overlaidText {
       position: absolute;
@@ -279,14 +225,13 @@
   }
 
   /* ---------------------------------------------------------------------------
-   * Thumbnails
+   * Thumbnails: the virtualized list's layout, and a neutral button.
    * ------------------------------------------------------------------------- */
   .rpv-thumbnails {
     position: relative;
     block-size: 100%;
     overflow: auto;
     overscroll-behavior: contain;
-    background: var(--_rpv-surface-muted);
     contain: strict;
   }
   .rpv-thumbnails-inner {
@@ -309,33 +254,15 @@
     padding: 0;
     border: 0;
     background: none;
-    cursor: pointer;
+    color: inherit;
     font: inherit;
-    color: var(--_rpv-text-muted);
+    cursor: pointer;
   }
   .rpv-thumbnail-image {
     display: block;
-    background: var(--_rpv-page-background);
-    box-shadow: var(--_rpv-page-shadow);
-    outline: 2px solid transparent;
-    outline-offset: 2px;
   }
-  .rpv-thumbnail[aria-current="page"] {
-    color: var(--_rpv-text);
-
-    & .rpv-thumbnail-image {
-      outline-color: var(--_rpv-accent);
-    }
-  }
-  .rpv-thumbnail:focus-visible {
-    outline: none;
-
-    & .rpv-thumbnail-image {
-      outline: 2px dashed var(--_rpv-accent);
-    }
-  }
+  /* <PdfThumbnails> lays items out assuming this line height for the label. */
   .rpv-thumbnail-label {
-    font-size: 12px;
     line-height: 16px;
   }
 }

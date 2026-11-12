@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import {
   loadOutline,
@@ -50,5 +50,43 @@ export function useOutline(): Outline {
     goToItem,
     currentItem: current?.item ?? null,
     currentPath: current?.ancestors ?? NO_ITEMS,
+  };
+}
+
+export interface OutlineEntry {
+  hasChildren: boolean;
+  /** Starts as the document specifies for the entry. */
+  isExpanded: boolean;
+  setExpanded: (isExpanded: boolean) => void;
+  toggle: () => void;
+  /** The entry for the page being read. */
+  isCurrent: boolean;
+  /** Collapsed, with the current entry somewhere inside: mark it in its place. */
+  containsCurrent: boolean;
+  /** Whether it points somewhere in this document (`select` does something). */
+  canNavigate: boolean;
+  /** Scrolls to the entry's destination. */
+  select: () => void;
+}
+
+/**
+ * The state of one outline entry, for rendering your own outline tree. Pass the result
+ * of one `useOutline()` call from the tree's root, so entries don't each subscribe.
+ */
+export function useOutlineEntry(outline: Outline, item: OutlineItem): OutlineEntry {
+  const hasChildren = item.items.length > 0;
+  // pdf.js reports a positive `count` for entries the document wants open.
+  const [isExpanded, setExpanded] = useState((item.count ?? 0) > 0);
+  return {
+    hasChildren,
+    isExpanded,
+    setExpanded,
+    toggle: () => setExpanded(!isExpanded),
+    isCurrent: item === outline.currentItem,
+    containsCurrent: hasChildren && !isExpanded && outline.currentPath.includes(item),
+    canNavigate: item.dest !== null,
+    select: () => {
+      outline.goToItem(item).catch(reportError);
+    },
   };
 }

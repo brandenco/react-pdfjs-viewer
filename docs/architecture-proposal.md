@@ -149,13 +149,15 @@ Steps 1–6 are done. These are the places where the implementation differs from
 - **Permissions have their own loader**, separate from the rest of the properties, so printing doesn't bundle metadata parsing.
 - **The annotation layer renders links only.** Popups and form widgets need UI and styles this viewer doesn't have yet. Their appearance is still drawn on the canvas.
 
+**Styling, revised after the first implementation.** The CSS no longer loads as a side effect of importing components. Apps import `core.css` (what's needed to work) or `ui.css` (core plus the default look) themselves, and can place it in their own cascade layer. A build step (`scripts/build-css.ts`) wraps every selector in `:where()` so ours never outweighs theirs. Every UI component takes `className` and `style`, and the README lists the class names and state attributes that are public API. The reason: CSS imported by JS gets declared after the app's own layers, so it beat Tailwind's utilities, and it couldn't be skipped or relocated.
+
 **Size, minified and gzipped JS** (enforced as budgets in `test/bundle/`):
 
 | Consumer              | Before  | After   |
 | --------------------- | ------- | ------- |
 | Provider + one hook   | 4.5 kB  | 5.5 kB  |
-| Provider + `PdfPages` | 8.6 kB  | 10.9 kB |
-| `<PdfViewer>`         | 12.5 kB | 18.3 kB |
+| Provider + `PdfPages` | 8.6 kB  | 11.0 kB |
+| `<PdfViewer>`         | 12.5 kB | 19.1 kB |
 
 **Not done yet**, in priority order: attachments, interactive forms, optional content, then spread, horizontal and single-page layouts, and presentation mode (P3–P4 in the table above).
 
