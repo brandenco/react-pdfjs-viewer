@@ -384,26 +384,6 @@ stable across minor versions; anything else in the markup may change.
 | One outline row                         | `rpv-outline-row`                            | `data-current`, `data-contains-current`          |
 | Outline entry title / chevron           | `rpv-outline-title`, `rpv-outline-toggle`    | `aria-expanded`, `aria-current="location"`       |
 
-## Upgrading from earlier versions
-
-Everything previously exported from `react-pdfjs-viewer` still is, with the same names.
-The changes to be aware of:
-
-- `PdfToolbar`'s `isSearchOpen` / `onSearchOpenChange` props are now optional: without
-  them it uses the shared `useSearch().isOpen`. `PdfSearchBar`'s `onClose` is optional the
-  same way (without it, the bar shows itself while `isOpen`).
-- **Styles are no longer imported for you.** Add `import "react-pdfjs-viewer/ui.css"`
-  once (or `core.css` for headless setups). `styles.css` and `viewer.css` are gone: their
-  contents are now in `core.css` and `ui.css`, split by what's needed to work and what's
-  appearance. All selectors now have zero specificity, and the layers are `rpv.core` and
-  `rpv.ui` instead of `rpv`.
-- Every UI component takes `className` and `style`. `PageControls` and `ZoomControls`
-  now render a wrapping element (`rpv-page-controls`, `rpv-zoom-controls`).
-- The toolbar's sidebar button is now labelled "Sidebar" (it was "Thumbnails"), since
-  the sidebar can show the outline too. Tests that find it by name need updating.
-- The default toolbar has new buttons (rotate, full screen, print), and `PdfPages`
-  renders a link layer; `annotations={false}` turns it off.
-
 ## Development
 
 Requires pnpm 12 (pinned in `packageManager`); pnpm downloads the pinned Node runtime
