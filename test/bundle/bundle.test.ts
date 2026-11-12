@@ -161,7 +161,7 @@ describe("consumer bundles", { timeout: 30_000 }, () => {
   test.each([
     ["hooks only", HOOKS_APP, 6_000],
     ["headless pages", HEADLESS_APP("react-pdfjs-viewer/headless"), 12_000],
-    ["complete viewer", VIEWER_APP, 20_000],
+    ["complete viewer", VIEWER_APP, 22_000],
   ])("size budget: %s", async (name, source, budget) => {
     const { gzip } = await bundle(source, { minify: true });
     console.info(`${name}: ${(gzip / 1000).toFixed(1)} kB gzipped`);

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { withClassName, type StyleProps } from "./class-names.ts";
 import { CursorModeSwitch } from "./CursorModeSwitch.tsx";
+import { MoreActionsMenu } from "./MoreActionsMenu.tsx";
 import { PageControls } from "./PageControls.tsx";
 import {
   DownloadButton,
@@ -13,6 +14,7 @@ import {
   SearchToggleButton,
   SidebarToggleButton,
 } from "./ToolbarButtons.tsx";
+import { usePopoverSupport } from "./use-menu-button.ts";
 import { ZoomControls } from "./ZoomControls.tsx";
 
 export interface PdfToolbarProps extends StyleProps {
@@ -30,7 +32,8 @@ export interface PdfToolbarProps extends StyleProps {
 
 /**
  * The default toolbar: sidebar and page controls on the left, zoom in the middle,
- * cursor mode, search, rotate, full screen, print and download on the right. Every
+ * cursor mode, search, rotate, full screen, print and download on the right. When the
+ * toolbar is too narrow for one row, the last four move into a "More actions" menu. Every
  * control is exported on its own, and only uses public hooks, so a custom toolbar can
  * reuse any of them.
  *
@@ -40,10 +43,16 @@ export interface PdfToolbarProps extends StyleProps {
  * one such control, so the controls keep their normal Tab order instead.
  */
 export function PdfToolbar(props: PdfToolbarProps): ReactNode {
+  const supportsPopover = usePopoverSupport();
   const { isSearchOpen, onSearchOpenChange, searchBarId, sidebarId, searchShortcut } = props;
 
   return (
-    <div className={withClassName("rpv-toolbar", props.className)} style={props.style}>
+    <div
+      className={withClassName("rpv-toolbar", props.className)}
+      style={props.style}
+      // Lets narrow toolbars swap those buttons for the menu, where the menu can show.
+      data-overflow-menu={supportsPopover ? "" : undefined}
+    >
       <div className="rpv-toolbar-group">
         <SidebarToggleButton controls={sidebarId} />
         <span className="rpv-toolbar-separator" />
@@ -63,10 +72,14 @@ export function PdfToolbar(props: PdfToolbarProps): ReactNode {
           controls={searchBarId}
           shortcut={searchShortcut}
         />
-        <RotateButton />
-        <FullscreenButton />
-        <PrintButton />
-        <DownloadButton />
+        {/* Shown as buttons when there's room, and in the menu when there isn't. */}
+        <span className="rpv-toolbar-actions">
+          <RotateButton />
+          <FullscreenButton />
+          <PrintButton />
+          <DownloadButton />
+        </span>
+        <MoreActionsMenu />
       </div>
     </div>
   );

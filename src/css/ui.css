@@ -147,6 +147,8 @@
     }
   }
   .rpv-toolbar {
+    /* Its width decides whether the last actions fit as buttons or go in a menu. */
+    container: rpv-toolbar / inline-size;
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
@@ -175,6 +177,110 @@
       justify-content: flex-end;
     }
   }
+  /* The "More actions" menu. */
+  .rpv-menu {
+    min-inline-size: 180px;
+    padding: 4px;
+    border: 1px solid var(--_rpv-border);
+    border-radius: var(--_rpv-radius);
+    background: var(--_rpv-surface);
+    color: var(--_rpv-text);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.16);
+    font:
+      14px/1.4 system-ui,
+      sans-serif;
+
+    /* Below its trigger, extending toward the start edge (the trigger sits at the
+       toolbar's end), flipping when it would overflow. */
+    @supports (position-area: block-end) {
+      position-anchor: var(--rpv-menu-anchor);
+      position-area: block-end span-inline-start;
+      position-try-fallbacks:
+        flip-block,
+        flip-inline,
+        flip-block flip-inline;
+      inset: auto;
+      margin: 4px 0;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      opacity: 0;
+      translate: 0 -4px;
+      transition: opacity, translate, display, overlay;
+      transition-duration: 0.15s;
+      transition-behavior: allow-discrete;
+
+      &:popover-open {
+        opacity: 1;
+        translate: 0 0;
+        transition-duration: 0.1s;
+
+        @starting-style {
+          opacity: 0;
+          translate: 0 -4px;
+        }
+      }
+    }
+  }
+  .rpv-more > .rpv-button {
+    anchor-name: var(--rpv-menu-anchor);
+
+    &[aria-expanded="true"] {
+      background: var(--_rpv-surface-active);
+    }
+  }
+  .rpv-menu-items {
+    display: flex;
+    flex-direction: column;
+
+    & > button {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 10px;
+      border: 0;
+      border-radius: 6px;
+      background: none;
+      color: inherit;
+      font: inherit;
+      text-align: start;
+      cursor: pointer;
+
+      &:focus {
+        outline: none;
+        background: var(--_rpv-surface-active);
+      }
+      &:focus-visible {
+        outline: 2px solid var(--_rpv-accent);
+        outline-offset: -2px;
+      }
+      &:disabled {
+        color: var(--_rpv-text-muted);
+        cursor: default;
+      }
+      /* Check mark for a checked item, after its label. */
+      &[aria-checked="true"]::after {
+        content: "✓";
+        margin-inline-start: auto;
+        padding-inline-start: 12px;
+        color: var(--_rpv-accent);
+      }
+
+      @media (pointer: coarse) {
+        min-block-size: 44px;
+      }
+    }
+  }
+  .rpv-menu-icon {
+    display: inline-grid;
+    flex: none;
+
+    & svg {
+      inline-size: 18px;
+      block-size: 18px;
+    }
+  }
+
   .rpv-page-controls,
   .rpv-zoom-controls {
     display: flex;
@@ -584,5 +690,63 @@
     margin: 0;
     padding: 10px;
     color: var(--_rpv-text);
+  }
+
+  /* ---------------------------------------------------------------------------
+   * Narrow toolbars. Last in the file on purpose: every selector has zero
+   * specificity, so these must come after the rules they override.
+   * ------------------------------------------------------------------------- */
+  /* Rotate / full screen / print / download as buttons, or (when the toolbar is too
+     narrow for one row) in the "More actions" menu instead. The full toolbar needs about
+     740px for one row; 760px leaves a margin. */
+  .rpv-toolbar-actions {
+    display: contents;
+  }
+  .rpv-toolbar .rpv-more {
+    display: none;
+  }
+  @container rpv-toolbar (inline-size < 760px) {
+    .rpv-toolbar[data-overflow-menu] .rpv-toolbar-actions {
+      display: none;
+    }
+    .rpv-toolbar[data-overflow-menu] .rpv-more {
+      display: contents;
+    }
+  }
+  /* Narrower: the cursor switch moves into the menu too (it matters least on touch
+     screens, which scroll by dragging anyway), and zoom keeps only its select, which
+     has every level. */
+  .rpv-menu-items > .rpv-menu-cursor {
+    display: none;
+  }
+  @container rpv-toolbar (inline-size < 600px) {
+    .rpv-toolbar[data-overflow-menu] {
+      .rpv-segmented,
+      .rpv-toolbar-group[data-align="end"] > .rpv-toolbar-separator {
+        display: none;
+      }
+      .rpv-menu-items > .rpv-menu-cursor {
+        display: flex;
+      }
+    }
+    .rpv-zoom-controls > .rpv-button {
+      display: none;
+    }
+  }
+  /* Phone width: the page field without its previous / next buttons (scrolling pages
+     through), and no separator after the sidebar button. */
+  @container rpv-toolbar (inline-size < 440px) {
+    .rpv-page-controls > .rpv-button,
+    .rpv-toolbar-group:first-child > .rpv-toolbar-separator {
+      display: none;
+    }
+    /* Narrow enough for "Fit width" and a three-digit page number. */
+    .rpv-zoom-controls > .rpv-select {
+      inline-size: 7em;
+    }
+    .rpv-page-input {
+      inline-size: 2.75em;
+      padding-inline: 4px;
+    }
   }
 }

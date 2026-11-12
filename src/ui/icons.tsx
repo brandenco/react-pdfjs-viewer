@@ -99,3 +99,10 @@ export const ExitFullscreenIcon = (): ReactNode => (
     <path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" />
   </Icon>
 );
+export const MoreIcon = (): ReactNode => (
+  <Icon>
+    <circle cx="5" cy="12" r="1.25" fill="currentColor" />
+    <circle cx="12" cy="12" r="1.25" fill="currentColor" />
+    <circle cx="19" cy="12" r="1.25" fill="currentColor" />
+  </Icon>
+);

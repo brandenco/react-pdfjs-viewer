@@ -27,6 +27,7 @@ export { ZoomControls } from "./ui/ZoomControls.tsx";
 export { CursorModeSwitch } from "./ui/CursorModeSwitch.tsx";
 export { ToolbarButton, type ToolbarButtonProps } from "./ui/ToolbarButton.tsx";
 export type { StyleProps } from "./ui/class-names.ts";
+export { MoreActionsMenu } from "./ui/MoreActionsMenu.tsx";
 export {
   DownloadButton,
   FullscreenButton,

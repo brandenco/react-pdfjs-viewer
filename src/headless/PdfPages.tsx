@@ -327,7 +327,14 @@ function useScrollAnchor(
       }
 
       const saved = anchor.current;
-      if (!saved) return;
+      if (!saved) {
+        // Nothing to keep yet (a new document). Start horizontally centered: the list is
+        // as wide as the widest page, so with mixed page sizes in a narrow viewer, the
+        // left edge would show narrower pages off to one side. (The anchor then keeps
+        // the center as page sizes stream in and the zoom changes.)
+        container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+        return;
+      }
       const pageIndex = Math.min(saved.pageIndex, next.count - 1);
       const pageSpan = next.heights[pageIndex]! + next.gap;
       container.scrollTop = next.tops[pageIndex]! + saved.fractionDown * pageSpan - saved.offsetY;

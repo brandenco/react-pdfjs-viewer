@@ -13,6 +13,8 @@ import { makeBrokenPdf, makePdf } from "./make-pdf.ts";
 export { workerSrc };
 
 const builders = {
+  /** For slow paths (printing renders every page). */
+  "3 pages": () => makePdf({ pageCount: 3 }),
   /** Milestones on pages 10, 20, 30 and 40. */
   "40 pages": () => makePdf({ pageCount: 40, milestoneEvery: 10 }),
   /** The 40 pages plus an outline, links on page 1, page labels and document info. */

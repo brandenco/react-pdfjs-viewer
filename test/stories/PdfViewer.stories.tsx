@@ -44,6 +44,10 @@ export const Default: Story = {
     await expect(mounted.length).toBeGreaterThan(0);
     await expect(mounted.length).toBeLessThan(40);
 
+    // A wide toolbar shows its actions as buttons, with no "More actions" menu.
+    await expect(canvas.getByRole("button", { name: "Print" })).toBeVisible();
+    await expect(canvas.queryByRole("button", { name: "More actions" })).toBeNull();
+
     // Pages are list items that announce their position in the whole document.
     const firstPage = canvasElement.querySelector(".rpv-page");
     await expect(firstPage).toHaveAttribute("aria-posinset", "1");
@@ -513,8 +517,10 @@ export const WheelZoom: Story = {
 
 /** Print renders every page into a hidden frame and prints that. */
 export const Print: Story = {
+  // Printing renders every page at print resolution; a short document keeps this quick.
+  args: { document: "3 pages" },
   async play({ canvas, userEvent }) {
-    await waitForDocument(canvas, 40);
+    await waitForDocument(canvas, 3);
 
     // Catch the print frame as it's added, and replace its print() with a check of what
     // it would print.
@@ -538,7 +544,7 @@ export const Print: Story = {
 
     const button = canvas.getByRole("button", { name: "Print" });
     await userEvent.click(button);
-    await expect(await printed).toEqual({ images: 40, decoded: true });
+    await expect(await printed).toEqual({ images: 3, decoded: true });
 
     // The frame is removed once the dialog closes, and the button works again.
     await waitFor(() => expect(document.querySelector('iframe[title="Print preview"]')).toBeNull());
@@ -594,5 +600,98 @@ export const SearchNormalization: Story = {
       timeout: 5000,
     });
     await waitFor(() => expect(activeHighlightText()).toBe("café"));
+  },
+};
+
+/**
+ * In a narrow viewer, rotate / full screen / print / download move into a "More actions"
+ * menu: a menu button with the usual keyboard contract.
+ */
+export const NarrowToolbar: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 420, height: "100%" }}>
+        <Story />
+      </div>
+    ),
+  ],
+  async play({ canvas, canvasElement, userEvent }) {
+    await waitForDocument(canvas, 40);
+    // Condensed to one row: no actions, cursor switch, zoom -/+ or page buttons; the
+    // page field, zoom select and search stay.
+    const hidden = ["Print", "Zoom in", "Next page"].filter((name) =>
+      canvas.queryByRole("button", { name }),
+    );
+    await expect(hidden).toEqual([]);
+    await expect(canvas.queryByRole("radiogroup", { name: "Cursor mode" })).toBeNull();
+    await expect(canvas.getByRole("textbox", { name: "Page number" })).toBeVisible();
+    await expect(canvas.getByRole("combobox", { name: "Zoom" })).toBeVisible();
+    const toolbar = canvasElement.querySelector(".rpv-toolbar");
+    await expect(toolbar?.getBoundingClientRect().height).toBeLessThan(60);
+
+    // Page 1 is centered, although landscape pages later on make the list wider than
+    // this narrow viewer.
+    await waitForRenderedPage(canvasElement);
+    const pages = canvas.getByRole("region", { name: "Document" });
+    await waitFor(() => expect(pages.scrollWidth).toBeGreaterThan(pages.clientWidth));
+    const firstPage = canvasElement.querySelector('.rpv-page[data-page-number="1"]');
+    const pageBox = firstPage!.getBoundingClientRect();
+    const viewBox = pages.getBoundingClientRect();
+    const pageCenter = pageBox.left + pageBox.width / 2;
+    const viewCenter = viewBox.left + pages.clientWidth / 2;
+    await expect(Math.abs(pageCenter - viewCenter)).toBeLessThan(2);
+    const trigger = canvas.getByRole("button", { name: "More actions" });
+    await expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    // Keyboard: Enter opens and moves into the menu; arrows, Home and End move.
+    trigger.focus();
+    await userEvent.keyboard("{Enter}");
+    const menu = await canvas.findByRole("menu", { name: "More actions" });
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    // This narrow, the cursor switch has moved into the menu too, as a checkbox item.
+    const handTool = within(menu).getByRole("menuitemcheckbox", { name: "Hand tool" });
+    await waitFor(() => expect(handTool).toHaveFocus());
+    await expect(handTool).toHaveAttribute("aria-checked", "false");
+    await userEvent.keyboard("{ArrowDown}");
+    const rotate = within(menu).getByRole("menuitem", { name: "Rotate clockwise" });
+    await expect(rotate).toHaveFocus();
+    await userEvent.keyboard("{End}");
+    await expect(within(menu).getByRole("menuitem", { name: "Download" })).toHaveFocus();
+    await userEvent.keyboard("{Home}");
+    await expect(handTool).toHaveFocus();
+    // Space toggles the hand tool and keeps the menu open.
+    await userEvent.keyboard(" ");
+    await expect(handTool).toHaveAttribute("aria-checked", "true");
+    await expect(canvasElement.querySelector(".rpv-pages")).toHaveAttribute("data-cursor", "hand");
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+    // Escape closes it and returns focus to the button.
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"));
+    await expect(trigger).toHaveFocus();
+
+    // Pointer: a click opens it (focus stays on the button); choosing an item runs it
+    // and closes the menu.
+    await userEvent.click(trigger);
+    await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "true"));
+    await userEvent.click(canvas.getByRole("menuitem", { name: "Rotate clockwise" }));
+    await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"));
+    await waitFor(() =>
+      expect(canvasElement.querySelector(".rpv-text-layer")).toHaveAttribute(
+        "data-main-rotation",
+        "90",
+      ),
+    );
+
+    // The menu sits under its button, not detached in the middle of the screen.
+    await userEvent.click(trigger);
+    const menuBox = (await canvas.findByRole("menu")).getBoundingClientRect();
+    const triggerBox = trigger.getBoundingClientRect();
+    await expect(menuBox.top).toBeGreaterThanOrEqual(triggerBox.bottom);
+    await expect(menuBox.top - triggerBox.bottom).toBeLessThan(12);
+    // Escape closes it from the button too (focus stays there after a pointer open).
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"));
   },
 };

@@ -102,7 +102,7 @@ load on first use:
 | ------------------------- | ------- |
 | The provider and one hook | 5.3 kB  |
 | `PdfPages` and a hook     | 11.1 kB |
-| `<PdfViewer>`             | 19.2 kB |
+| `<PdfViewer>`             | 20.7 kB |
 
 ## Composing your own viewer
 
@@ -140,8 +140,9 @@ Cmd/Ctrl+F for search, and links the toolbar to the sidebar and search bar with
 **Replacing the toolbar.** Pass your own to `<PdfViewer toolbar={…}>`, or build one from
 the toolbar's parts: `SidebarToggleButton`, `PageControls`, `ZoomControls`,
 `CursorModeSwitch`, `SearchToggleButton`, `RotateButton`, `FullscreenButton`,
-`PrintButton`, `DownloadButton`, and `ToolbarButton` for your own. Each only uses public
-hooks:
+`PrintButton`, `DownloadButton`, `MoreActionsMenu` (rotate, full screen, print and
+download in a menu; the default toolbar switches to it when it's narrower than 760px),
+and `ToolbarButton` for your own. Each only uses public hooks:
 
 ```tsx
 import { useZoom } from "react-pdfjs-viewer/headless";
