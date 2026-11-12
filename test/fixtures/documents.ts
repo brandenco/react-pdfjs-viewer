@@ -15,6 +15,8 @@ export { workerSrc };
 const builders = {
   /** Milestones on pages 10, 20, 30 and 40. */
   "40 pages": () => makePdf({ pageCount: 40, milestoneEvery: 10 }),
+  /** The 40 pages plus an outline, links on page 1, page labels and document info. */
+  "40 pages with extras": () => makePdf({ pageCount: 40, milestoneEvery: 10, extras: true }),
   /** Milestones every 100 pages. About 15 MB, so it is only built when a story needs it. */
   "5,000 pages": () => makePdf({ pageCount: 5000 }),
   "Not a PDF": () => makeBrokenPdf(),

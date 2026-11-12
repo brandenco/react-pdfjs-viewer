@@ -3,16 +3,19 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { useMemo } from "react";
 
-import { usePdfViewerState, usePdfViewerStore } from "./context.tsx";
+import type { PdfDestination } from "../core/navigation.ts";
 import type {
   CursorMode,
   LoadStatus,
+  Rotation,
   SearchMatch,
   SearchOptions,
   SearchStatus,
+  SidebarView,
   ZoomMode,
   ZoomPreset,
-} from "./core/types.ts";
+} from "../core/types.ts";
+import { usePdfViewerState, usePdfViewerStore } from "./context.tsx";
 
 // One hook per toolbar feature, so you can build your own toolbar. Every action
 // function a hook returns keeps the same identity across renders, so it's safe to
@@ -45,6 +48,11 @@ export interface PageNavigation {
   previousPage: () => void;
   firstPage: () => void;
   lastPage: () => void;
+  /**
+   * Scrolls to a named or explicit PDF destination (what links and outline entries point
+   * to). Resolves to `false` if it isn't in this document.
+   */
+  goToDestination: (destination: PdfDestination) => Promise<boolean>;
 }
 
 export function usePageNavigation(): PageNavigation {
@@ -58,6 +66,7 @@ export function usePageNavigation(): PageNavigation {
       previousPage: () => store.previousPage(),
       firstPage: () => store.firstPage(),
       lastPage: () => store.lastPage(),
+      goToDestination: (destination: PdfDestination) => store.goToDestination(destination),
     }),
     [store],
   );
@@ -149,11 +158,17 @@ export interface Search {
   next: () => void;
   previous: () => void;
   setActiveMatch: (index: number) => void;
+  /** Whether the search bar is shown. Lets any toolbar open the same search bar. */
+  isOpen: boolean;
+  /** Shows or hides the search bar. Hiding it also clears the search. */
+  setOpen: (isOpen: boolean) => void;
+  toggleOpen: () => void;
 }
 
 export function useSearch(): Search {
   const store = usePdfViewerStore();
   const state = usePdfViewerState((viewer) => viewer.search);
+  const isOpen = usePdfViewerState((viewer) => viewer.isSearchOpen);
   const actions = useMemo(
     () => ({
       search: (query: string, options?: SearchOptions) => store.search(query, options),
@@ -161,11 +176,13 @@ export function useSearch(): Search {
       next: () => store.nextMatch(),
       previous: () => store.previousMatch(),
       setActiveMatch: (index: number) => store.setActiveMatch(index),
+      setOpen: (next: boolean) => store.setSearchOpen(next),
+      toggleOpen: () => store.toggleSearchOpen(),
     }),
     [store],
   );
 
-  return { ...state, ...actions };
+  return { ...state, isOpen, ...actions };
 }
 
 export interface Download {
@@ -188,18 +205,47 @@ export interface SidebarControls {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
   toggle: () => void;
+  /** What the sidebar shows: thumbnails or the outline. */
+  view: SidebarView;
+  setView: (view: SidebarView) => void;
 }
 
 export function useSidebar(): SidebarControls {
   const store = usePdfViewerStore();
   const isOpen = usePdfViewerState((state) => state.isSidebarOpen);
+  const view = usePdfViewerState((state) => state.sidebarView);
   const actions = useMemo(
     () => ({
       setOpen: (next: boolean) => store.setSidebarOpen(next),
       toggle: () => store.toggleSidebar(),
+      setView: (next: SidebarView) => store.setSidebarView(next),
     }),
     [store],
   );
 
-  return { isOpen, ...actions };
+  return { isOpen, view, ...actions };
+}
+
+export interface RotationControls {
+  /** Clockwise, in degrees, on top of each page's own rotation. */
+  rotation: Rotation;
+  /** A multiple of 90; other values are rounded to one. */
+  setRotation: (degrees: number) => void;
+  rotateClockwise: () => void;
+  rotateCounterClockwise: () => void;
+}
+
+export function useRotation(): RotationControls {
+  const store = usePdfViewerStore();
+  const rotation = usePdfViewerState((state) => state.rotation);
+  const actions = useMemo(
+    () => ({
+      setRotation: (degrees: number) => store.setRotation(degrees),
+      rotateClockwise: () => store.rotateClockwise(),
+      rotateCounterClockwise: () => store.rotateCounterClockwise(),
+    }),
+    [store],
+  );
+
+  return { rotation, ...actions };
 }

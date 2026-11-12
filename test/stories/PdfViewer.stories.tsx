@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { PdfViewer, type PdfViewerProps } from "react-pdfjs-viewer";
-import { expect, spyOn, waitFor } from "storybook/test";
+import { expect, spyOn, waitFor, within } from "storybook/test";
 
 import {
   documentArgType,
@@ -156,7 +156,7 @@ export const SearchShortcut: Story = {
 export const Thumbnails: Story = {
   async play({ canvas, canvasElement, userEvent }) {
     await waitForDocument(canvas, 40);
-    const toggle = canvas.getByRole("button", { name: "Thumbnails" });
+    const toggle = canvas.getByRole("button", { name: "Sidebar" });
     await userEvent.click(toggle);
 
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
@@ -198,7 +198,7 @@ export const ThumbnailsWithoutAnimation: Story = {
   ],
   async play({ canvas, userEvent }) {
     await waitForDocument(canvas, 40);
-    const toggle = canvas.getByRole("button", { name: "Thumbnails" });
+    const toggle = canvas.getByRole("button", { name: "Sidebar" });
 
     await userEvent.click(toggle);
     await canvas.findByRole("navigation", { name: "Page thumbnails" });
@@ -291,5 +291,271 @@ export const DarkMode: Story = {
     const toolbar = canvasElement.querySelector(".rpv-toolbar");
     if (!toolbar) throw new Error("toolbar not rendered");
     await expect(getComputedStyle(toolbar).backgroundColor).toBe("rgb(38, 38, 38)");
+  },
+};
+
+/**
+ * Links in the document: to a position on another page, to a named destination, and out.
+ * This document has page labels: pages 1 and 2 are "i" and "ii", page 3 is "1".
+ */
+export const Links: Story = {
+  args: { document: "40 pages with extras", initialScale: "page-width" },
+  async play({ canvas, canvasElement, userEvent }) {
+    await waitForDocument(canvas, 40);
+    const pageField = canvas.getByRole("textbox", { name: "Page number" });
+    const pages = canvas.getByRole("region", { name: "Document" });
+
+    const links = await waitFor(
+      () => {
+        const found = canvasElement.querySelectorAll<HTMLAnchorElement>(
+          '.rpv-page[data-page-number="1"] .rpv-annotation-layer a',
+        );
+        if (found.length !== 3) throw new Error(`${found.length} links rendered`);
+        return [...found];
+      },
+      { timeout: 10_000 },
+    );
+    const [toMilestone, toLastPage, external] = links;
+
+    // External links open in a new tab, without access to the viewer's window.
+    await expect(external).toHaveAttribute("href", "https://example.com/");
+    await expect(external).toHaveAttribute("target", "_blank");
+    await expect(external).toHaveAttribute("rel", "noopener noreferrer nofollow");
+
+    // An internal link scrolls to the exact spot it points at: milestone 2's line, near
+    // the bottom of page 20 (labelled "18").
+    await userEvent.click(toMilestone!);
+    await waitFor(() => expect(pageField).toHaveValue("18"));
+    await waitFor(async () => {
+      const milestone = [
+        ...canvasElement.querySelectorAll('.rpv-page[data-page-number="20"] .rpv-text-layer span'),
+      ].find((span) => span.textContent === "Milestone 2");
+      await expect(milestone && isInView(milestone, pages)).toBe(true);
+    });
+    // Page 20 fits the viewport's width, so it's shown whole rather than cut at the left.
+    const page20 = canvasElement.querySelector('.rpv-page[data-page-number="20"]');
+    await expect(page20?.getBoundingClientRect().left).toBeGreaterThanOrEqual(
+      pages.getBoundingClientRect().left,
+    );
+
+    // The page number stays on the target page, even though most of what's visible is
+    // the next page, until the user scrolls themselves.
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await expect(pageField).toHaveValue("18");
+    pages.dispatchEvent(new WheelEvent("wheel"));
+    pages.scrollTop += 100;
+    await waitFor(() => expect(pageField).toHaveValue("19"));
+
+    // A named destination.
+    pages.dispatchEvent(new WheelEvent("wheel"));
+    pages.scrollTop = 0;
+    await waitFor(() => expect(pageField).toHaveValue("i"));
+    await userEvent.click(toLastPage!);
+    await waitFor(() => expect(pageField).toHaveValue("38"));
+  },
+};
+
+/** `initialPage` opens the document at that page, before `<PdfPages>` has laid it out. */
+export const InitialPage: Story = {
+  args: { initialPage: 25 },
+  async play({ canvas, canvasElement }) {
+    await waitForDocument(canvas, 40);
+    await expect(canvas.getByRole("textbox", { name: "Page number" })).toHaveValue("25");
+    await waitFor(() => expect(mountedPageNumbers(canvasElement)).toContain(25));
+    await expect(mountedPageNumbers(canvasElement)).not.toContain(1);
+  },
+};
+
+/** Documents with an outline get an Outline view in the sidebar. */
+export const Outline: Story = {
+  args: { document: "40 pages with extras" },
+  async play({ canvas, userEvent }) {
+    await waitForDocument(canvas, 40);
+    await userEvent.click(canvas.getByRole("button", { name: "Sidebar" }));
+    await userEvent.click(await canvas.findByRole("radio", { name: "Outline" }));
+
+    const outline = canvas.getByRole("navigation", { name: "Outline" });
+    // "Milestones" has no destination of its own: it's one button that expands and
+    // collapses. The document asks for it to start expanded.
+    const milestones = within(outline).getByRole("button", { name: "Milestones" });
+    await expect(milestones).toHaveAttribute("aria-expanded", "true");
+
+    const milestone3 = within(outline).getByRole("button", { name: "Milestone 3" });
+    await userEvent.click(milestone3);
+    await waitFor(() =>
+      expect(canvas.getByRole("textbox", { name: "Page number" })).toHaveValue("28"),
+    );
+    // The entry for the page being read is marked.
+    await waitFor(() => expect(milestone3).toHaveAttribute("aria-current", "location"));
+
+    // Collapsed, its parent stands in for it.
+    await userEvent.click(milestones);
+    await expect(milestones).toHaveAttribute("aria-expanded", "false");
+    await expect(within(outline).queryByRole("button", { name: "Milestone 3" })).toBeNull();
+    await expect(milestones.closest(".rpv-outline-row")).toHaveAttribute("data-contains-current");
+
+    // The view sticks: closing and reopening the sidebar keeps showing the outline.
+    await userEvent.click(canvas.getByRole("button", { name: "Sidebar" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Sidebar" }));
+    await expect(await canvas.findByRole("radio", { name: "Outline" })).toBeChecked();
+  },
+};
+
+/** Page labels: the page field shows and accepts them, with the page number alongside. */
+export const PageLabels: Story = {
+  args: { document: "40 pages with extras" },
+  async play({ canvas, userEvent }) {
+    await waitForDocument(canvas, 40);
+    const pageField = canvas.getByRole("textbox", { name: "Page number" });
+    // Labels load just after the document.
+    await canvas.findByText("(1 of 40)");
+    await expect(pageField).toHaveValue("i");
+
+    await userEvent.clear(pageField);
+    await userEvent.type(pageField, "ii{Enter}");
+    await expect(pageField).toHaveValue("ii");
+    await expect(canvas.getByText("(2 of 40)")).toBeInTheDocument();
+
+    await userEvent.clear(pageField);
+    await userEvent.type(pageField, "10{Enter}");
+    await expect(canvas.getByText("(12 of 40)")).toBeInTheDocument();
+  },
+};
+
+/** Rotating turns every page, its text layer and its thumbnail. */
+export const Rotation: Story = {
+  args: { initialScale: 1 },
+  async play({ canvas, canvasElement, userEvent }) {
+    await waitForDocument(canvas, 40);
+    await waitForRenderedPage(canvasElement);
+    const firstPage = canvasElement.querySelector<HTMLElement>(".rpv-page");
+    if (!firstPage) throw new Error("no page rendered");
+    const portrait = firstPage.getBoundingClientRect();
+    await expect(portrait.height).toBeGreaterThan(portrait.width);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Rotate clockwise" }));
+    await waitFor(async () => {
+      const page = canvasElement.querySelector<HTMLElement>('.rpv-page[data-page-number="1"]');
+      const rect = page?.getBoundingClientRect();
+      await expect(rect?.width).toBeCloseTo(portrait.height, 0);
+      await expect(rect?.height).toBeCloseTo(portrait.width, 0);
+      // The re-rendered text layer is rotated into place, not left portrait.
+      const textLayer = page?.querySelector(".rpv-text-layer");
+      await expect(textLayer).toHaveAttribute("data-main-rotation", "90");
+    });
+
+    // Four quarter turns are back to the start.
+    for (let turn = 0; turn < 3; turn++) {
+      // oxlint-disable-next-line no-await-in-loop
+      await userEvent.click(canvas.getByRole("button", { name: "Rotate clockwise" }));
+    }
+    await waitFor(() =>
+      expect(canvasElement.querySelector(".rpv-page")?.getBoundingClientRect().height).toBeCloseTo(
+        portrait.height,
+        0,
+      ),
+    );
+  },
+};
+
+/** Ctrl + wheel zooms the pages, keeping the point under the pointer in place. */
+export const WheelZoom: Story = {
+  args: { initialScale: 1 },
+  async play({ canvas, canvasElement }) {
+    await waitForDocument(canvas, 40);
+    await waitForRenderedPage(canvasElement);
+    const pages = canvas.getByRole("region", { name: "Document" });
+    const zoom = canvas.getByRole<HTMLSelectElement>("combobox", { name: "Zoom" });
+    const view = pages.getBoundingClientRect();
+    const pointer = { clientX: view.left + view.width / 2, clientY: view.top + 200 };
+
+    const pointUnder = (): { page: number; fraction: number } => {
+      const element = document.elementFromPoint(pointer.clientX, pointer.clientY);
+      const page = element?.closest<HTMLElement>(".rpv-page");
+      if (!page) throw new Error("no page under the pointer");
+      const rect = page.getBoundingClientRect();
+      return {
+        page: Number(page.dataset["pageNumber"]),
+        fraction: (pointer.clientY - rect.top) / rect.height,
+      };
+    };
+    const before = pointUnder();
+
+    const wheel = new WheelEvent("wheel", {
+      ...pointer,
+      deltaY: -50,
+      ctrlKey: true,
+      cancelable: true,
+    });
+    pages.dispatchEvent(wheel);
+    await expect(wheel.defaultPrevented).toBe(true); // the web page itself doesn't zoom
+    await waitFor(() => expect(Number(zoom.value)).toBeCloseTo(Math.exp(0.5), 2));
+
+    const after = pointUnder();
+    await expect(after.page).toBe(before.page);
+    await expect(after.fraction).toBeCloseTo(before.fraction, 2);
+
+    // Without Ctrl, the wheel scrolls as usual.
+    const plain = new WheelEvent("wheel", { ...pointer, deltaY: 50, cancelable: true });
+    pages.dispatchEvent(plain);
+    await expect(plain.defaultPrevented).toBe(false);
+  },
+};
+
+/** Print renders every page into a hidden frame and prints that. */
+export const Print: Story = {
+  async play({ canvas, userEvent }) {
+    await waitForDocument(canvas, 40);
+
+    // Catch the print frame as it's added, and replace its print() with a check of what
+    // it would print.
+    const printed = new Promise<{ images: number; decoded: boolean }>((resolve) => {
+      const observer = new MutationObserver(() => {
+        const frame = document.querySelector<HTMLIFrameElement>('iframe[title="Print preview"]');
+        const frameWindow = frame?.contentWindow;
+        if (!frameWindow) return;
+        observer.disconnect();
+        frameWindow.print = () => {
+          const images = [...(frame.contentDocument?.images ?? [])];
+          resolve({
+            images: images.length,
+            decoded: images.every((image) => image.naturalWidth > 0),
+          });
+          frameWindow.dispatchEvent(new Event("afterprint"));
+        };
+      });
+      observer.observe(document.body, { childList: true });
+    });
+
+    const button = canvas.getByRole("button", { name: "Print" });
+    await userEvent.click(button);
+    await expect(await printed).toEqual({ images: 40, decoded: true });
+
+    // The frame is removed once the dialog closes, and the button works again.
+    await waitFor(() => expect(document.querySelector('iframe[title="Print preview"]')).toBeNull());
+    await waitFor(() =>
+      expect(canvas.getByRole("button", { name: "Print" })).not.toHaveAttribute("aria-disabled"),
+    );
+  },
+};
+
+/**
+ * Full screen shows the whole viewer (its shell). Browsers only go fullscreen for a real
+ * user gesture, which test clicks aren't, so this checks what the button asks for.
+ */
+export const Fullscreen: Story = {
+  async play({ canvas, canvasElement, userEvent }) {
+    await waitForDocument(canvas, 40);
+    const button = canvas.getByRole("button", { name: "Full screen" });
+    await expect(button).toHaveAttribute("aria-pressed", "false");
+
+    const request = spyOn(Element.prototype, "requestFullscreen").mockResolvedValue();
+    try {
+      await userEvent.click(button);
+      await expect(request).toHaveBeenCalledTimes(1);
+      await expect(request.mock.contexts[0]).toBe(canvasElement.querySelector(".rpv-viewer"));
+    } finally {
+      request.mockRestore();
+    }
   },
 };

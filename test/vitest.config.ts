@@ -13,6 +13,10 @@ export default defineConfig({
           include: ["test/unit/**/*.test.ts"],
           environment: "node",
         },
+        // The library imports pdf.js' browser build; its legacy build is the one for Node.
+        resolve: {
+          alias: [{ find: /^pdfjs-dist$/, replacement: "pdfjs-dist/legacy/build/pdf.mjs" }],
+        },
       },
       storybookProject("stories"),
     ],

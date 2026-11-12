@@ -2,8 +2,8 @@
 
 import { useId, type ReactNode } from "react";
 
-import type { CursorMode } from "../../core/types.ts";
-import { useCursorMode } from "../../hooks.ts";
+import type { CursorMode } from "../core/types.ts";
+import { useCursorMode } from "../headless/hooks.ts";
 import { HandIcon, TextCursorIcon } from "./icons.tsx";
 
 const CURSOR_MODES: { mode: CursorMode; label: string; icon: ReactNode }[] = [
@@ -16,7 +16,7 @@ const CURSOR_MODES: { mode: CursorMode; label: string; icon: ReactNode }[] = [
  * is a radio group (native radios): one Tab stop, arrow keys switch modes, and screen
  * readers announce "Text selection, radio button, 1 of 2, checked".
  */
-export function CursorModeControls(): ReactNode {
+export function CursorModeSwitch(): ReactNode {
   const cursor = useCursorMode();
   const groupName = useId();
 

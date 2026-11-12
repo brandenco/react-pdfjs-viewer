@@ -1,5 +1,7 @@
 "use client";
 
+// The sliding panel is opinionated UI, so its styles live with the toolbar's.
+import "../viewer.css";
 import {
   useEffect,
   useRef,
@@ -9,7 +11,8 @@ import {
   type TransitionEvent,
 } from "react";
 
-import { usePdfViewerState } from "../context.tsx";
+import { usePdfViewerState } from "../headless/context.tsx";
+import { useShell } from "./PdfViewerShell.tsx";
 
 export interface PdfSidebarProps {
   children?: ReactNode | undefined;
@@ -27,7 +30,9 @@ export interface PdfSidebarProps {
  * nothing. The slide is skipped for users who prefer reduced motion.
  */
 export function PdfSidebar(props: PdfSidebarProps): ReactNode {
-  const { children, id, className, style, width = 168 } = props;
+  const { children, className, style, width = 168 } = props;
+  const shell = useShell();
+  const id = props.id ?? shell?.sidebarId;
   const isOpen = usePdfViewerState((state) => state.isSidebarOpen);
   const sidebarRef = useRef<HTMLDivElement>(null);
 

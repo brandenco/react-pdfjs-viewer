@@ -18,6 +18,14 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./headless": {
+      "types": "./dist/headless.d.ts",
+      "import": "./dist/headless.js"
+    },
+    "./ui": {
+      "types": "./dist/ui.d.ts",
+      "import": "./dist/ui.js"
+    },
     "./styles.css": "./dist/styles.css",
     "./viewer.css": "./dist/viewer.css",
     "./package.json": "./package.json"
@@ -34,10 +42,11 @@
     "lint:pkg": "publint && attw --pack . --profile esm-only --exclude-entrypoints styles.css viewer.css",
     "storybook": "storybook dev -p 6006 -c test/.storybook",
     "build-storybook": "storybook build -c test/.storybook -o storybook-static",
-    "test": "pnpm test:main && pnpm test:compat",
+    "test": "pnpm test:main && pnpm test:compat && pnpm test:bundle",
     "test:watch": "vitest --config test/vitest.config.ts",
     "test:main": "vitest run --config test/vitest.config.ts",
-    "test:compat": "vitest run --config test/vitest.compat.config.ts"
+    "test:compat": "vitest run --config test/vitest.compat.config.ts",
+    "test:bundle": "pnpm build && vitest run --config test/vitest.bundle.config.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

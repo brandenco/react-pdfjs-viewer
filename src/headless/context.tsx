@@ -2,7 +2,7 @@
 
 // Imported here, not in the index barrel: bundlers can skip side-effect-free re-export
 // modules, but every viewer renders this provider.
-import "./styles.css";
+import "../styles.css";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import {
   createContext,
@@ -17,14 +17,15 @@ import {
   type RefObject,
 } from "react";
 
-import { PdfViewerStore } from "./core/store.ts";
+import { PdfViewerStore } from "../core/store.ts";
 import type {
   CursorMode,
   DocumentInitParameters,
   PdfSource,
+  SidebarView,
   ViewerState,
   ZoomPreset,
-} from "./core/types.ts";
+} from "../core/types.ts";
 
 const StoreContext = createContext<PdfViewerStore | null>(null);
 
@@ -44,8 +45,12 @@ export interface PdfViewerProviderProps {
   filename?: string | undefined;
   /** A scale (1 = 100%) or a fit preset. Default `"page-fit"`. */
   initialScale?: number | ZoomPreset | undefined;
+  /** 1-based page each document opens at. Read when the provider mounts. Default 1. */
+  initialPage?: number | undefined;
   /** Whether the thumbnail sidebar starts open. Default `false`. */
   initialSidebarOpen?: boolean | undefined;
+  /** What the sidebar shows first. Default `"thumbnails"`. */
+  initialSidebarView?: SidebarView | undefined;
   /** Default `"text"`. */
   initialCursorMode?: CursorMode | undefined;
   /** Default 0.25. */
@@ -64,7 +69,9 @@ export function PdfViewerProvider(props: PdfViewerProviderProps): ReactNode {
     () =>
       new PdfViewerStore({
         initialScale: props.initialScale,
+        initialPage: props.initialPage,
         initialSidebarOpen: props.initialSidebarOpen,
+        initialSidebarView: props.initialSidebarView,
         initialCursorMode: props.initialCursorMode,
         minScale: props.minScale,
         maxScale: props.maxScale,

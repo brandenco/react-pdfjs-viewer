@@ -11,13 +11,20 @@ import {
   type RefObject,
 } from "react";
 
-import { useSearch, type Search } from "../hooks.ts";
-import { ChevronDownIcon, ChevronUpIcon, CloseIcon } from "./toolbar/icons.tsx";
-import { isImeConfirmation } from "./toolbar/keyboard.ts";
-import { ToolbarButton } from "./toolbar/ToolbarButton.tsx";
+import { usePdfViewerState } from "../headless/context.tsx";
+import { useSearch, type Search } from "../headless/hooks.ts";
+import { ChevronDownIcon, ChevronUpIcon, CloseIcon } from "./icons.tsx";
+import { isImeConfirmation } from "./keyboard.ts";
+import { useShell } from "./PdfViewerShell.tsx";
+import { ToolbarButton } from "./ToolbarButton.tsx";
 
 export interface PdfSearchBarProps {
-  onClose: () => void;
+  /**
+   * Called by Escape and the close button. When given, you control when the bar is
+   * shown. When omitted, the bar follows the shared `useSearch().isOpen` state: it
+   * renders only while open, and closing it calls `setOpen(false)`.
+   */
+  onClose?: (() => void) | undefined;
   /** Lets a toggle button point at the search bar with `aria-controls`. */
   id?: string | undefined;
   /** How long to wait after typing stops before searching, in ms. Default 250. */
@@ -25,8 +32,21 @@ export interface PdfSearchBarProps {
 }
 
 /** Search-as-you-type box with a match counter and previous / next match buttons. */
-export function PdfSearchBar({ onClose, id, debounce = 250 }: PdfSearchBarProps): ReactNode {
+export function PdfSearchBar(props: PdfSearchBarProps): ReactNode {
+  const isOpen = usePdfViewerState((state) => state.isSearchOpen);
+  if (!props.onClose && !isOpen) return null;
+  return <SearchBar {...props} />;
+}
+
+function SearchBar({
+  onClose: onCloseProp,
+  debounce = 250,
+  ...props
+}: PdfSearchBarProps): ReactNode {
   const search = useSearch();
+  const shell = useShell();
+  const id = props.id ?? shell?.searchBarId;
+  const onClose = onCloseProp ?? (() => search.setOpen(false));
   const [query, setQuery] = useState(search.query);
   const barRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);

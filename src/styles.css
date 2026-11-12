@@ -213,6 +213,71 @@
     }
   }
 
+  /* With the viewer rotated, pdf.js lays these layers out unrotated and marks them;
+     rotate them into place (pdf.js' own rules are global, so they're mirrored here). */
+  :is(.rpv-text-layer, .rpv-annotation-layer) {
+    &[data-main-rotation="90"] {
+      transform: rotate(90deg) translateY(-100%);
+    }
+    &[data-main-rotation="180"] {
+      transform: rotate(180deg) translate(-100%, -100%);
+    }
+    &[data-main-rotation="270"] {
+      transform: rotate(270deg) translateX(-100%);
+    }
+  }
+
+  /* Annotation layer: clickable links, above the text layer. Mirrors the parts of
+     pdf.js' own .annotationLayer rules that links use. pdf.js sizes the layer and
+     positions each <section> inline (physical properties, page space). */
+  .rpv-annotation-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    pointer-events: none;
+    transform-origin: 0 0;
+
+    section {
+      position: absolute;
+      box-sizing: border-box;
+      text-align: initial;
+      transform-origin: 0 0;
+      pointer-events: auto;
+      user-select: none;
+    }
+    .linkAnnotation > a {
+      position: absolute;
+      top: 0;
+      left: 0;
+      inline-size: 100%;
+      block-size: 100%;
+      font-size: 1em;
+    }
+    .linkAnnotation > a:hover {
+      background: color-mix(in srgb, var(--_rpv-accent) 15%, transparent);
+    }
+    .linkAnnotation > a:focus-visible {
+      outline: 2px solid var(--_rpv-accent);
+      outline-offset: 1px;
+    }
+    /* Text the link covers, for screen readers. */
+    .overlaidText {
+      position: absolute;
+      top: 0;
+      left: 0;
+      inline-size: 0;
+      block-size: 0;
+      overflow: hidden;
+    }
+
+    @media (forced-colors: active) {
+      .linkAnnotation {
+        outline: 1.5px solid LinkText;
+      }
+    }
+  }
+
   /* ---------------------------------------------------------------------------
    * Thumbnails
    * ------------------------------------------------------------------------- */
@@ -272,42 +337,5 @@
   .rpv-thumbnail-label {
     font-size: 12px;
     line-height: 16px;
-  }
-
-  /* ---------------------------------------------------------------------------
-   * Sidebar: pushes the pages aside while its content slides in. Motion is opt-in
-   * so reduced-motion users get an instant open/close.
-   * ------------------------------------------------------------------------- */
-  .rpv-sidebar {
-    flex: none;
-    inline-size: 0;
-    block-size: 100%;
-    overflow: hidden;
-    background: var(--_rpv-surface-muted);
-
-    &[data-open] {
-      inline-size: var(--rpv-sidebar-width);
-      border-inline-end: 1px solid var(--_rpv-border);
-    }
-
-    @media (prefers-reduced-motion: no-preference) {
-      transition: inline-size var(--_rpv-duration) var(--_rpv-ease);
-    }
-  }
-  .rpv-sidebar-inner {
-    inline-size: var(--rpv-sidebar-width);
-    block-size: 100%;
-    translate: -100% 0;
-
-    &:dir(rtl) {
-      translate: 100% 0;
-    }
-    .rpv-sidebar[data-open] > & {
-      translate: none;
-    }
-
-    @media (prefers-reduced-motion: no-preference) {
-      transition: translate var(--_rpv-duration) var(--_rpv-ease);
-    }
   }
 }

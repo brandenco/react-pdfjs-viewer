@@ -3,11 +3,11 @@
 import type { TextLayer } from "pdfjs-dist";
 import { useEffect, useMemo } from "react";
 
-import { usePdfViewerState, usePdfViewerStore } from "../context.tsx";
 import { applyHighlights } from "../core/highlights.ts";
 import { storeInternals } from "../core/store.ts";
 import { splitIntoItemSegments, type PageText, type TextRange } from "../core/text.ts";
 import type { SearchMatch } from "../core/types.ts";
+import { usePdfViewerState, usePdfViewerStore } from "./context.tsx";
 
 /**
  * Highlights this page's search matches on its text layer, and scrolls the active

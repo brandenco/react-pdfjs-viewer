@@ -13,10 +13,16 @@ export type CursorMode = "text" | "hand";
 
 export type ZoomPreset = "page-width" | "page-fit";
 
+/** What the sidebar shows. */
+export type SidebarView = "thumbnails" | "outline";
+
 /** `custom` is a fixed scale; presets are re-applied whenever the viewport resizes. */
 export type ZoomMode = ZoomPreset | "custom";
 
-/** Unscaled page size in PDF points (rotation applied). */
+/** Clockwise rotation of every page, in degrees, on top of the document's own. */
+export type Rotation = 0 | 90 | 180 | 270;
+
+/** Unscaled page size in PDF points (the page's own rotation and the viewer's applied). */
 export interface PageSize {
   readonly width: number;
   readonly height: number;
@@ -64,8 +70,13 @@ export interface ViewerState {
   /** 1 = 100% (real-world size). */
   readonly scale: number;
   readonly zoomMode: ZoomMode;
+  /** Extra clockwise rotation the user applied to every page. */
+  readonly rotation: Rotation;
   readonly cursorMode: CursorMode;
   readonly isSidebarOpen: boolean;
+  readonly sidebarView: SidebarView;
+  /** Whether the search bar is shown. Closing it clears the search. */
+  readonly isSearchOpen: boolean;
   readonly isDownloading: boolean;
   readonly search: SearchState;
 }

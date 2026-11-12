@@ -2,8 +2,8 @@
 
 import type { ReactNode } from "react";
 
-import type { ZoomPreset } from "../../core/types.ts";
-import { useZoom } from "../../hooks.ts";
+import type { ZoomPreset } from "../core/types.ts";
+import { useZoom } from "../headless/hooks.ts";
 import { MinusIcon, PlusIcon } from "./icons.tsx";
 import { ToolbarButton } from "./ToolbarButton.tsx";
 

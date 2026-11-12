@@ -1,8 +1,8 @@
 "use client";
 
-// Styles for the default toolbar and search bar. Imported by their shared building
-// block, so setups with a custom toolbar never load them.
-import "../../viewer.css";
+// Styles for the opinionated UI. Imported by the components that need them, so
+// headless setups never load them.
+import "../viewer.css";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 export interface ToolbarButtonProps extends Omit<

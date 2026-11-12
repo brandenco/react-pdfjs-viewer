@@ -77,3 +77,25 @@ export const CloseIcon = (): ReactNode => (
     <path d="M18 6 6 18M6 6l12 12" />
   </Icon>
 );
+export const RotateClockwiseIcon = (): ReactNode => (
+  <Icon>
+    <path d="M20 12a8 8 0 1 1-2.34-5.66L20 8.5" />
+    <path d="M20 4v4.5h-4.5" />
+  </Icon>
+);
+export const PrintIcon = (): ReactNode => (
+  <Icon>
+    <path d="M7 8V4h10v4M7 17H5a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2" />
+    <path d="M7 14h10v6H7z" />
+  </Icon>
+);
+export const EnterFullscreenIcon = (): ReactNode => (
+  <Icon>
+    <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />
+  </Icon>
+);
+export const ExitFullscreenIcon = (): ReactNode => (
+  <Icon>
+    <path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" />
+  </Icon>
+);

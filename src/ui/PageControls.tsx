@@ -2,22 +2,27 @@
 
 import { useId, useState, type ReactNode } from "react";
 
-import { usePageNavigation } from "../../hooks.ts";
+import { usePageNavigation } from "../headless/hooks.ts";
+import { usePageLabels } from "../headless/use-page-labels.ts";
 import { ChevronLeftIcon, ChevronRightIcon } from "./icons.tsx";
 import { isImeConfirmation } from "./keyboard.ts";
 import { ToolbarButton } from "./ToolbarButton.tsx";
 
-/** Previous / next buttons around an editable "page N of M" field. */
+/**
+ * Previous / next buttons around an editable "page N of M" field. For documents with
+ * page labels, the field shows and accepts labels ("iv"), with the number alongside.
+ */
 export function PageControls(): ReactNode {
   const navigation = usePageNavigation();
+  const { labels, labelOf, pageNumberOf } = usePageLabels();
   // What the user is typing; `null` shows the current page instead.
   const [typedPage, setTypedPage] = useState<string | null>(null);
   const pageCountId = useId();
 
   function goToTypedPage(): void {
     if (typedPage === null) return;
-    const pageNumber = Number.parseInt(typedPage, 10);
-    if (Number.isFinite(pageNumber)) navigation.goToPage(pageNumber);
+    const pageNumber = pageNumberOf(typedPage);
+    if (pageNumber !== null) navigation.goToPage(pageNumber);
     setTypedPage(null);
   }
 
@@ -36,10 +41,10 @@ export function PageControls(): ReactNode {
         aria-label="Page number"
         // Read out with the field, so screen readers hear "Page number, 12, of 5000".
         aria-describedby={pageCountId}
-        inputMode="numeric"
+        inputMode={labels ? "text" : "numeric"}
         enterKeyHint="go"
         autoComplete="off"
-        value={typedPage ?? String(navigation.currentPage)}
+        value={typedPage ?? labelOf(navigation.currentPage)}
         disabled={navigation.numPages === 0}
         onChange={(event) => setTypedPage(event.target.value)}
         onFocus={(event) => event.target.select()}
@@ -50,7 +55,9 @@ export function PageControls(): ReactNode {
         }}
       />
       <span id={pageCountId} className="rpv-page-count">
-        of {navigation.numPages}
+        {labels
+          ? `(${navigation.currentPage} of ${navigation.numPages})`
+          : `of ${navigation.numPages}`}
       </span>
 
       <ToolbarButton

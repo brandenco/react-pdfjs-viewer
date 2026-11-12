@@ -2,6 +2,12 @@ import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist";
 
 import { filenameFromSource, getPageSize, readPageSizes, toInitSource } from "./document.ts";
 import { saveAsFile } from "./download.ts";
+import {
+  resolveDestination,
+  type PagePosition,
+  type PageTarget,
+  type PdfDestination,
+} from "./navigation.ts";
 import { loadPdfjs } from "./pdfjs.ts";
 import { buildSearchRegExp, pickFirstActiveMatch, scanPages } from "./search.ts";
 import { extractPageText, type PageText } from "./text.ts";
@@ -11,9 +17,11 @@ import type {
   DocumentInitParameters,
   PageSize,
   PdfSource,
+  Rotation,
   SearchMatch,
   SearchOptions,
   SearchState,
+  SidebarView,
   ViewerState,
   ZoomMode,
   ZoomPreset,
@@ -23,8 +31,12 @@ import { clamp, fitScale, nextZoomStep, previousZoomStep } from "./zoom.ts";
 export interface StoreOptions {
   /** A scale (1 = 100%) or a fit preset. Default `"page-fit"`. */
   initialScale?: number | ZoomPreset | undefined;
+  /** 1-based page to open each document at. Default 1. */
+  initialPage?: number | undefined;
   /** Default `false`. */
   initialSidebarOpen?: boolean | undefined;
+  /** Default `"thumbnails"`. */
+  initialSidebarView?: SidebarView | undefined;
   /** Default `"text"`. */
   initialCursorMode?: CursorMode | undefined;
   /** Default 0.25. */
@@ -41,9 +53,17 @@ interface LoadAttempt {
   loadingTask: PDFDocumentLoadingTask | null;
 }
 
-/** Implemented by `<PdfPages>`, which owns the scroll container. */
+/**
+ * The scroll container the store navigates. `<PdfPages>` implements it; a custom page
+ * renderer can implement it too and attach it with `store.attachScroller()`.
+ */
 export interface PageScroller {
-  scrollToPage(pageIndex: number): void;
+  /**
+   * Scrolls a 0-based page into view: its top, or `position` on it. Called before the
+   * page is laid out too (right after a document loads, for example): remember the
+   * target and apply it once the layout includes that page.
+   */
+  scrollToPage(pageIndex: number, position?: PagePosition): void;
   /** Scrolls a rendered element or text range into view. */
   scrollToRect(target: { getBoundingClientRect(): DOMRect }): void;
   getViewportSize(): { width: number; height: number };
@@ -53,11 +73,6 @@ export interface PageScroller {
 
 /** Store methods used by the library's own components. Not exported from the package. */
 export interface StoreInternals {
-  setScroller(scroller: PageScroller | null): void;
-  /** Re-fits the page when a zoom preset is active. */
-  onViewportResize(): void;
-  /** Reported by `<PdfPages>` as the user scrolls. */
-  setCurrentPage(pageNumber: number): void;
   /** Whether a freshly rendered highlight for `match` should be scrolled into view. */
   takeMatchToReveal(match: SearchMatch): boolean;
   scrollIntoView(target: { getBoundingClientRect(): DOMRect }): void;
@@ -96,6 +111,11 @@ export class PdfViewerStore {
   readonly #initialZoom: { scale: number; zoomMode: ZoomMode };
 
   #scroller: PageScroller | null = null;
+  /** Where to scroll once a scroller attaches (navigation before `<PdfPages>` mounted). */
+  #pendingTarget: PageTarget | null = null;
+  readonly #initialPage: number;
+  /** Page sizes without the viewer's rotation; `pageSizes` in the state has it applied. */
+  #unrotatedSizes: readonly PageSize[] = [];
   #pageTextCache = new Map<number, Promise<PageText>>();
   #currentLoad: LoadAttempt | null = null;
   #searchController: AbortController | null = null;
@@ -108,6 +128,7 @@ export class PdfViewerStore {
     this.minScale = options.minScale ?? 0.25;
     this.maxScale = options.maxScale ?? 5;
     this.thumbnails = new ThumbnailCache(options.thumbnailCacheSize ?? 200);
+    this.#initialPage = options.initialPage ?? 1;
 
     const initialScale = options.initialScale ?? "page-fit";
     this.#initialZoom =
@@ -123,8 +144,11 @@ export class PdfViewerStore {
       pageSizes: [],
       currentPage: 1,
       ...this.#initialZoom,
+      rotation: 0,
       cursorMode: options.initialCursorMode ?? "text",
       isSidebarOpen: options.initialSidebarOpen ?? false,
+      sidebarView: options.initialSidebarView ?? "thumbnails",
+      isSearchOpen: false,
       isDownloading: false,
       search: EMPTY_SEARCH,
     };
@@ -205,14 +229,17 @@ export class PdfViewerStore {
     const firstPageSize = getPageSize(await doc.getPage(1));
     signal.throwIfAborted();
 
+    const initialPage = clamp(Math.round(this.#initialPage), 1, doc.numPages);
+    this.#unrotatedSizes = Array.from({ length: doc.numPages }, () => firstPageSize);
     this.#update({
       status: "ready",
       document: doc,
       numPages: doc.numPages,
-      pageSizes: Array.from({ length: doc.numPages }, () => firstPageSize),
-      currentPage: 1,
+      pageSizes: this.#unrotatedSizes,
+      currentPage: initialPage,
     });
     this.#applyZoomPreset();
+    if (initialPage > 1) this.#scrollTo({ pageIndex: initialPage - 1 });
 
     for await (const batch of readPageSizes(doc)) {
       if (signal.aborted) return;
@@ -221,15 +248,17 @@ export class PdfViewerStore {
   }
 
   #updatePageSizes(sizes: [pageIndex: number, size: PageSize][]): void {
-    let pageSizes: PageSize[] | null = null;
+    let unrotated: PageSize[] | null = null;
     for (const [pageIndex, size] of sizes) {
-      const current = this.#state.pageSizes[pageIndex];
+      const current = this.#unrotatedSizes[pageIndex];
       if (current?.width === size.width && current.height === size.height) continue;
 
-      pageSizes ??= [...this.#state.pageSizes]; // copy only if something changed
-      pageSizes[pageIndex] = size;
+      unrotated ??= [...this.#unrotatedSizes]; // copy only if something changed
+      unrotated[pageIndex] = size;
     }
-    if (pageSizes) this.#update({ pageSizes });
+    if (!unrotated) return;
+    this.#unrotatedSizes = unrotated;
+    this.#update({ pageSizes: rotateSizes(unrotated, this.#state.rotation) });
   }
 
   /** Back to "no document". Cursor mode and the sidebar are user preferences, so they stay. */
@@ -240,6 +269,8 @@ export class PdfViewerStore {
     this.#searchController = null;
     this.#pageTextCache = new Map();
     this.#matchToReveal = null;
+    this.#pendingTarget = null;
+    this.#unrotatedSizes = [];
     this.thumbnails.clear();
 
     this.#update({
@@ -250,6 +281,7 @@ export class PdfViewerStore {
       pageSizes: [],
       currentPage: 1,
       ...this.#initialZoom,
+      rotation: 0,
       search: EMPTY_SEARCH,
     });
   }
@@ -264,8 +296,34 @@ export class PdfViewerStore {
     if (numPages === 0) return;
 
     const page = clamp(Math.round(pageNumber), 1, numPages);
-    this.#scroller?.scrollToPage(page - 1);
-    this.#setCurrentPage(page);
+    this.#scrollTo({ pageIndex: page - 1 });
+  }
+
+  /**
+   * Scrolls to where a link, outline entry or named destination points. Resolves to
+   * `false` if the destination isn't in this document.
+   */
+  async goToDestination(destination: PdfDestination): Promise<boolean> {
+    const doc = this.#state.document;
+    if (!doc) return false;
+
+    const target = await resolveDestination(doc, destination, this.#state.rotation).catch(
+      () => null,
+    );
+    if (!target || doc !== this.#state.document) return false;
+    this.#scrollTo(target);
+    return true;
+  }
+
+  /** Scrolls now if a scroller is attached, otherwise as soon as one is. */
+  #scrollTo(target: PageTarget): void {
+    if (this.#scroller) {
+      const { pageIndex, ...position } = target;
+      this.#scroller.scrollToPage(pageIndex, position);
+    } else {
+      this.#pendingTarget = target;
+    }
+    this.#setCurrentPage(target.pageIndex + 1);
   }
 
   nextPage(): void {
@@ -331,6 +389,29 @@ export class PdfViewerStore {
   }
 
   // ---------------------------------------------------------------------------
+  // Rotation
+  // ---------------------------------------------------------------------------
+
+  /** Rotates every page to `degrees` clockwise (a multiple of 90; others are rounded). */
+  setRotation(degrees: number): void {
+    const rotation = normalizeRotation(degrees);
+    if (rotation === this.#state.rotation) return;
+
+    // Rendered thumbnails show the old orientation.
+    this.thumbnails.clear();
+    this.#update({ rotation, pageSizes: rotateSizes(this.#unrotatedSizes, rotation) });
+    this.#applyZoomPreset();
+  }
+
+  rotateClockwise(): void {
+    this.setRotation(this.#state.rotation + 90);
+  }
+
+  rotateCounterClockwise(): void {
+    this.setRotation(this.#state.rotation - 90);
+  }
+
+  // ---------------------------------------------------------------------------
   // Cursor mode, sidebar, download
   // ---------------------------------------------------------------------------
 
@@ -348,6 +429,20 @@ export class PdfViewerStore {
 
   toggleSidebar(): void {
     this.setSidebarOpen(!this.#state.isSidebarOpen);
+  }
+
+  setSidebarView(view: SidebarView): void {
+    if (view !== this.#state.sidebarView) this.#update({ sidebarView: view });
+  }
+
+  /** Shows or hides the search bar. Hiding it also clears the search. */
+  setSearchOpen(isOpen: boolean): void {
+    if (isOpen !== this.#state.isSearchOpen) this.#update({ isSearchOpen: isOpen });
+    if (!isOpen) this.clearSearch();
+  }
+
+  toggleSearchOpen(): void {
+    this.setSearchOpen(!this.#state.isSearchOpen);
   }
 
   /** Default `download()` filename. When unset, the URL's filename is used if it has one. */
@@ -417,7 +512,7 @@ export class PdfViewerStore {
   clearSearch(): void {
     this.#searchController?.abort();
     this.#matchToReveal = null;
-    this.#update({ search: EMPTY_SEARCH });
+    if (this.#state.search !== EMPTY_SEARCH) this.#update({ search: EMPTY_SEARCH });
   }
 
   nextMatch(): void {
@@ -463,13 +558,39 @@ export class PdfViewerStore {
   }
 
   // ---------------------------------------------------------------------------
-  // Internals used by the library's own components (see `storeInternals`)
+  // Scroll container integration (implemented by <PdfPages>, or your own renderer)
   // ---------------------------------------------------------------------------
 
-  #setScroller(scroller: PageScroller | null): void {
+  /**
+   * Connects the scroll container that navigation, search and fit-to-page zoom act on.
+   * Only one is active at a time. Returns a function that detaches it.
+   */
+  attachScroller(scroller: PageScroller): () => void {
     this.#scroller = scroller;
     this.#applyZoomPreset();
+
+    const pending = this.#pendingTarget;
+    this.#pendingTarget = null;
+    if (pending) this.#scrollTo(pending);
+
+    return () => {
+      if (this.#scroller === scroller) this.#scroller = null;
+    };
   }
+
+  /** Reports the 1-based page the user is reading, as the scroll container scrolls. */
+  reportCurrentPage(pageNumber: number): void {
+    this.#setCurrentPage(pageNumber);
+  }
+
+  /** Reports that the scroll container resized, so an active fit-to-page zoom re-fits. */
+  reportViewportResize(): void {
+    this.#applyZoomPreset();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Internals used by the library's own components (see `storeInternals`)
+  // ---------------------------------------------------------------------------
 
   /** True exactly once for the match that `setActiveMatch` asked to scroll to. */
   #takeMatchToReveal(match: SearchMatch): boolean {
@@ -486,13 +607,20 @@ export class PdfViewerStore {
     // A static block can reach `#private` members. This gives the library's components
     // access to them without making them part of the public class.
     getInternals = (store) => ({
-      setScroller: (scroller) => store.#setScroller(scroller),
-      onViewportResize: () => store.#applyZoomPreset(),
-      setCurrentPage: (pageNumber) => store.#setCurrentPage(pageNumber),
       takeMatchToReveal: (match) => store.#takeMatchToReveal(match),
       scrollIntoView: (target) => store.#scrollIntoView(target),
     });
   }
+}
+
+function normalizeRotation(degrees: number): Rotation {
+  const quarterTurns = ((Math.round(degrees / 90) % 4) + 4) % 4;
+  return ([0, 90, 180, 270] as const)[quarterTurns]!;
+}
+
+function rotateSizes(sizes: readonly PageSize[], rotation: Rotation): readonly PageSize[] {
+  if (rotation % 180 === 0) return sizes;
+  return sizes.map(({ width, height }) => ({ width: height, height: width }));
 }
 
 function toError(error: unknown): Error {

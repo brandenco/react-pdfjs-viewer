@@ -3,9 +3,12 @@ import type { within } from "storybook/test";
 
 type Canvas = ReturnType<typeof within>;
 
-/** Waits until the viewer shows "of N" next to the page field, i.e. the document is ready. */
+/**
+ * Waits until the viewer shows "of N" next to the page field ("(3 of N)" with page
+ * labels), i.e. the document is ready.
+ */
 export async function waitForDocument(canvas: Canvas, pageCount: number): Promise<void> {
-  await canvas.findByText(`of ${pageCount}`, undefined, { timeout: 20_000 });
+  await canvas.findByText(new RegExp(`of ${pageCount}\\)?$`), undefined, { timeout: 20_000 });
 }
 
 /** Waits until at least one page has a rendered canvas and a text layer. */

@@ -1,13 +1,15 @@
 /*
- * Styles for the default <PdfViewer> shell, <PdfToolbar> and <PdfSearchBar>.
- * Imported by those components only, so headless setups (your own toolbar) never
- * ship it. Uses the tokens defined in styles.css, in the same `rpv` layer.
+ * Styles for the opinionated UI (`react-pdfjs-viewer/ui`): the <PdfViewer> shell,
+ * toolbar, controls, search bar and sidebar. Imported by those components only, so
+ * headless setups never ship it. Uses the tokens defined in styles.css, in the same
+ * `rpv` layer.
  */
 @layer rpv {
   /* ---------------------------------------------------------------------------
    * Default viewer shell + toolbar
    * ------------------------------------------------------------------------- */
   .rpv-viewer {
+    container: rpv-viewer / inline-size;
     display: flex;
     flex-direction: column;
     block-size: 100%;
@@ -40,9 +42,18 @@
     padding: 4px 12px;
     background: var(--_rpv-surface);
     border-block-end: 1px solid var(--_rpv-border);
+
+    /* Too narrow for three columns: let the groups wrap onto more rows. */
+    @container rpv-viewer (inline-size < 900px) {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      row-gap: 4px;
+    }
   }
   .rpv-toolbar-group {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 4px;
     min-inline-size: 0;
@@ -227,5 +238,232 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+
+  /* ---------------------------------------------------------------------------
+   * Sidebar: pushes the pages aside while its content slides in. Motion is opt-in
+   * so reduced-motion users get an instant open/close.
+   * ------------------------------------------------------------------------- */
+  .rpv-sidebar {
+    flex: none;
+    inline-size: 0;
+    block-size: 100%;
+    overflow: hidden;
+    background: var(--_rpv-surface-muted);
+
+    &[data-open] {
+      inline-size: var(--rpv-sidebar-width);
+      border-inline-end: 1px solid var(--_rpv-border);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: inline-size var(--_rpv-duration) var(--_rpv-ease);
+    }
+  }
+  .rpv-sidebar-inner {
+    display: flex;
+    flex-direction: column;
+    inline-size: var(--rpv-sidebar-width);
+    block-size: 100%;
+    translate: -100% 0;
+
+    /* The view fills what the view switch leaves. */
+    & > :is(.rpv-thumbnails, .rpv-outline) {
+      flex: 1;
+      min-block-size: 0;
+      block-size: auto;
+    }
+
+    &:dir(rtl) {
+      translate: 100% 0;
+    }
+    .rpv-sidebar[data-open] > & {
+      translate: none;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: translate var(--_rpv-duration) var(--_rpv-ease);
+    }
+  }
+
+  /* View switch at the top of the sidebar: two tabs with an underline, so it doesn't
+     read as another toolbar control. Still a radio group underneath. */
+  .rpv-sidebar-views {
+    flex: none;
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+    margin: 0;
+    padding: 0 8px;
+    border: 0;
+    border-block-end: 1px solid var(--_rpv-border);
+    min-inline-size: 0;
+  }
+  .rpv-sidebar-view {
+    position: relative;
+    padding: 10px 4px 8px;
+    color: var(--_rpv-text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--_rpv-text);
+    }
+    &:has(:checked) {
+      color: var(--_rpv-text);
+      box-shadow: inset 0 -2px var(--_rpv-accent);
+    }
+    &:has(:focus-visible) {
+      outline: 2px solid var(--_rpv-accent);
+      outline-offset: -2px;
+      border-radius: 4px;
+    }
+
+    @media (pointer: coarse) {
+      padding-block: 14px 12px;
+    }
+  }
+
+  /* ---------------------------------------------------------------------------
+   * Outline: full-width rows; nesting shown by a guide line; the entry for the page
+   * being read carries an accent bar.
+   * ------------------------------------------------------------------------- */
+  .rpv-outline {
+    --_rpv-outline-gutter: 20px;
+
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 6px;
+    text-align: start;
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .rpv-outline-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    /* Nested lists hang off their parent's chevron, with a line marking the level. */
+    & & {
+      /* Centered under the parent's chevron. */
+      margin-inline-start: calc(var(--_rpv-outline-gutter) / 2 - 0.5px);
+      padding-inline-start: 4px;
+      border-inline-start: 1px solid var(--_rpv-border);
+    }
+  }
+  .rpv-outline-row {
+    display: flex;
+    align-items: flex-start;
+    border-radius: 6px;
+    color: var(--_rpv-text);
+
+    &:hover {
+      background: var(--_rpv-surface-active);
+    }
+    &:is([data-current], [data-contains-current]) {
+      box-shadow: inset 2px 0 var(--_rpv-accent);
+      color: var(--_rpv-accent);
+    }
+    &[data-current] {
+      background: color-mix(in srgb, var(--_rpv-accent) 12%, transparent);
+    }
+    &:dir(rtl):is([data-current], [data-contains-current]) {
+      box-shadow: inset -2px 0 var(--_rpv-accent);
+    }
+  }
+  .rpv-outline-toggle {
+    flex: none;
+    display: grid;
+    place-items: center;
+    inline-size: var(--_rpv-outline-gutter);
+    min-block-size: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px 0 0 6px;
+    background: none;
+    color: var(--_rpv-text-muted);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--_rpv-text);
+    }
+  }
+  .rpv-outline-chevron {
+    display: inline-grid;
+    place-items: center;
+
+    & svg {
+      inline-size: 12px;
+      block-size: 12px;
+      stroke-width: 2.25;
+    }
+    &:dir(rtl) svg {
+      scale: -1 1;
+    }
+    [aria-expanded="true"] > & svg {
+      rotate: 90deg;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      & svg {
+        transition: rotate var(--_rpv-duration) var(--_rpv-ease);
+      }
+    }
+  }
+  .rpv-outline-title {
+    flex: 1;
+    min-inline-size: 0;
+    padding: 5px 8px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+
+    &:is(button, a) {
+      cursor: pointer;
+    }
+    /* Follows a toggle: the toggle supplies the left padding. */
+    .rpv-outline-toggle + & {
+      padding-inline-start: 2px;
+    }
+    /* A parent that only expands: the chevron sits in the gutter, inside the button. */
+    &[data-with-chevron] {
+      display: flex;
+      align-items: flex-start;
+      gap: 2px;
+      padding-inline-start: 0;
+
+      & .rpv-outline-chevron {
+        flex: none;
+        inline-size: var(--_rpv-outline-gutter);
+        block-size: 18px;
+        color: var(--_rpv-text-muted);
+      }
+    }
+    /* Leaves next to expandable siblings line up with their titles. */
+    [data-toggles] > li > .rpv-outline-row > &:first-child:not([data-with-chevron]) {
+      padding-inline-start: calc(var(--_rpv-outline-gutter) + 2px);
+    }
+
+    @media (pointer: coarse) {
+      padding-block: 11px;
+    }
+  }
+  :is(.rpv-outline-toggle, .rpv-outline-title):focus-visible {
+    outline: 2px solid var(--_rpv-accent);
+    outline-offset: -2px;
+  }
+  .rpv-outline-empty {
+    margin: 0;
+    padding: 10px;
+    color: var(--_rpv-text);
   }
 }

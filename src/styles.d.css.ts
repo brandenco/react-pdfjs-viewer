@@ -1,2 +1,2 @@
-// Types for `import "./styles.css"`. Shipped next to dist/styles.css so the import
-// that TypeScript keeps in the emitted context.d.ts resolves for consumers too.
+// Types for `import "../styles.css"` in headless/context.tsx. Shipped next to
+// dist/styles.css so the import TypeScript keeps in the emitted .d.ts resolves for consumers.

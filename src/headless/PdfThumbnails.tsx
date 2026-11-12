@@ -11,10 +11,12 @@ import {
   type RefObject,
 } from "react";
 
-import { usePdfViewerState, usePdfViewerStore } from "../context.tsx";
 import { computeListLayout, indexesIn, type ListLayout } from "../core/layout.ts";
 import type { PdfViewerStore } from "../core/store.ts";
+import type { Rotation } from "../core/types.ts";
 import { devicePixelRatio, releaseCanvas } from "./canvas.ts";
+import { usePdfViewerState, usePdfViewerStore } from "./context.tsx";
+import { usePageLabels } from "./use-page-labels.ts";
 import { useVirtualList } from "./use-virtual-list.ts";
 
 export interface PdfThumbnailsProps {
@@ -40,6 +42,8 @@ export function PdfThumbnails(props: PdfThumbnailsProps): ReactNode {
   const doc = usePdfViewerState((state) => state.document);
   const pageSizes = usePdfViewerState((state) => state.pageSizes);
   const currentPage = usePdfViewerState((state) => state.currentPage);
+  const rotation = usePdfViewerState((state) => state.rotation);
+  const { labelOf } = usePageLabels();
   const containerRef = useRef<HTMLElement>(null);
 
   const layout = useMemo(() => {
@@ -76,6 +80,8 @@ export function PdfThumbnails(props: PdfThumbnailsProps): ReactNode {
               document={doc}
               pageIndex={pageIndex}
               pageCount={pageSizes.length}
+              rotation={rotation}
+              label={labelOf(pageIndex + 1)}
               top={layout.tops[pageIndex]!}
               width={width}
               imageHeight={layout.heights[pageIndex]! - LABEL_HEIGHT}
@@ -113,6 +119,9 @@ interface ThumbnailProps {
   document: PDFDocumentProxy;
   pageIndex: number;
   pageCount: number;
+  rotation: Rotation;
+  /** The page's label, or its number. */
+  label: string;
   top: number;
   width: number;
   imageHeight: number;
@@ -121,7 +130,7 @@ interface ThumbnailProps {
 }
 
 const Thumbnail = memo(function Thumbnail(props: ThumbnailProps) {
-  const { store, pageIndex, pageCount, top, width, imageHeight, isCurrent } = props;
+  const { store, pageIndex, pageCount, label, top, width, imageHeight, isCurrent } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useThumbnailImage(props, canvasRef);
 
@@ -135,7 +144,9 @@ const Thumbnail = memo(function Thumbnail(props: ThumbnailProps) {
       <button
         type="button"
         className="rpv-thumbnail"
-        aria-label={`Page ${pageIndex + 1}`}
+        aria-label={
+          label === String(pageIndex + 1) ? `Page ${label}` : `Page ${label} (${pageIndex + 1})`
+        }
         aria-current={isCurrent ? "page" : undefined}
         onClick={() => store.goToPage(pageIndex + 1)}
       >
@@ -145,7 +156,7 @@ const Thumbnail = memo(function Thumbnail(props: ThumbnailProps) {
           style={{ width, height: imageHeight }}
         />
         <span className="rpv-thumbnail-label" aria-hidden="true">
-          {pageIndex + 1}
+          {label}
         </span>
       </button>
     </li>
@@ -160,7 +171,7 @@ function useThumbnailImage(
   props: ThumbnailProps,
   canvasRef: RefObject<HTMLCanvasElement | null>,
 ): void {
-  const { store, document: doc, pageIndex, width, renderDelay } = props;
+  const { store, document: doc, pageIndex, rotation, width, renderDelay } = props;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -180,8 +191,12 @@ function useThumbnailImage(
       const page = await doc.getPage(pageIndex + 1);
       signal.throwIfAborted();
 
-      const pageWidth = page.getViewport({ scale: 1 }).width;
-      const viewport = page.getViewport({ scale: (width * devicePixelRatio()) / pageWidth });
+      const pageRotation = page.rotate + rotation;
+      const pageWidth = page.getViewport({ scale: 1, rotation: pageRotation }).width;
+      const viewport = page.getViewport({
+        scale: (width * devicePixelRatio()) / pageWidth,
+        rotation: pageRotation,
+      });
       target.width = Math.max(1, Math.floor(viewport.width));
       target.height = Math.max(1, Math.floor(viewport.height));
 
@@ -203,7 +218,7 @@ function useThumbnailImage(
       renderTask?.cancel();
       releaseCanvas(canvas);
     };
-  }, [store, doc, pageIndex, width, renderDelay, canvasRef]);
+  }, [store, doc, pageIndex, rotation, width, renderDelay, canvasRef]);
 }
 
 function drawBitmap(canvas: HTMLCanvasElement, bitmap: ImageBitmap): void {
