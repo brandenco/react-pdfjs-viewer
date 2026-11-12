@@ -100,9 +100,9 @@ load on first use:
 
 | You use                   | JS      |
 | ------------------------- | ------- |
-| The provider and one hook | 5.3 kB  |
-| `PdfPages` and a hook     | 11.1 kB |
-| `<PdfViewer>`             | 20.7 kB |
+| The provider and one hook | 5.4 kB  |
+| `PdfPages` and a hook     | 12.7 kB |
+| `<PdfViewer>`             | 22.4 kB |
 
 ## Composing your own viewer
 
@@ -240,7 +240,7 @@ they're safe to pass to `onClick` or list in effect dependencies.
 | `useZoom()`               | `scale`, `mode`, `minScale`, `maxScale`, `canZoomIn`, `canZoomOut`, `setScale`, `zoomIn`, `zoomOut`, `zoomTo("page-fit" \| "page-width")`                                                                                                      |
 | `useSearch()`             | `query`, `options`, `status`, `matches`, `activeIndex`, `pagesSearched`, `search(query, { caseSensitive, wholeWord, matchDiacritics })`, `next`, `previous`, `setActiveMatch`, `clear`, and the search bar's `isOpen`, `setOpen`, `toggleOpen` |
 | `useRotation()`           | `rotation`, `setRotation(degrees)`, `rotateClockwise`, `rotateCounterClockwise`                                                                                                                                                                |
-| `useCursorMode()`         | `mode` (`"text"` \| `"hand"`), `setMode`, `toggle`                                                                                                                                                                                             |
+| `useCursorMode()`         | `mode` (`"text"` \| `"hand"` \| your own), `setMode`, `toggle`                                                                                                                                                                                 |
 | `useSidebar()`            | `isOpen`, `setOpen`, `toggle`, `view` (`"thumbnails"` \| `"outline"`), `setView`                                                                                                                                                               |
 | `useDownload()`           | `download(filename?)`, `canDownload`, `isDownloading`                                                                                                                                                                                          |
 | `usePrint()`              | `print({ dpi })`, `cancel`, `canPrint`, `isPrinting`, `progress`                                                                                                                                                                               |
@@ -277,16 +277,55 @@ function Controls() {
 ```
 
 `useSearchField` also returns `spokenCountLabel` ("Result 3 of 12") and `announcement`
-(for an `aria-live` region; filled in once the search is done). For an outline tree of
+(for an `aria-live` region; filled in once the search is done and typing has stopped
+for `announceDelay`, default 500 ms). For an outline tree of
 your own, `useOutlineEntry(outline, item)` gives each entry its expanded state, whether
 it's the current one (or a collapsed parent of it), and `select()`.
 
 **Rendering primitives.** `<PdfPages>` is the scrollable, virtualized page list, with
 canvas, selectable text, search highlights and clickable links. `<PdfThumbnails>` is the
 virtualized thumbnail list. Both are unstyled beyond layout, and take `className` and
-`style`. `PdfPages` props include `gap`, `overscan`, `renderDelay`, `maxCanvasPixels`,
+`style`. `PdfPages` props include `gap`, `overscan`, `renderDelay`, `zoomRenderDelay` (the wait
+before re-rendering after a zoom step, default 400 ms), `maxCanvasPixels` (past it, the
+visible part of a page is drawn again at full resolution so zoomed-in pages stay sharp),
 `annotations` (`false` skips the link layer), `externalLinkTarget` (default `"_blank"`),
-`loadingFallback` and `errorFallback`.
+`loadingFallback`, `errorFallback` and `renderPageOverlay` (below).
+
+**Page overlays and your own cursor modes.** `renderPageOverlay` renders your own layer
+on each mounted page, above the canvas, text and links: bounding boxes, highlights, a
+drawing surface. It gets a box the size of the page that follows zoom and rotation, and
+helpers to convert between PDF user space and on-screen px (`toViewportRect`,
+`toPdfRect`, `toViewportPoint`, `toPdfPoint`). Store positions in PDF units, and they
+survive zoom and rotation. The overlay ignores the pointer, so text selection and links
+work beneath it; set `pointer-events: auto` on what should take input. Hand mode never
+pans from inside an overlay.
+
+`setMode` takes any string, so an app can add its own cursor mode (say `"draw"`). The
+viewer gives it no behavior beyond `data-cursor="draw"` on the page list for styling:
+the overlay handles the input.
+
+```tsx
+const renderPageOverlay = useCallback(
+  (page: PageOverlayInfo) => <BoxLayer page={page} />, // stable: pages are memoized
+  [],
+);
+
+function BoxLayer({ page }: { page: PageOverlayInfo }) {
+  const { mode } = useCursorMode(); // the viewer's hooks work in overlays
+  return (
+    <>
+      {boxesOn(page.pageIndex).map((box) => (
+        <div key={box.id} className="box" style={page.toViewportRect(box.rect)} />
+      ))}
+      {mode === "draw" && <DrawSurface page={page} />} {/* pointer-events: auto */}
+    </>
+  );
+}
+
+<PdfPages renderPageOverlay={renderPageOverlay} />;
+```
+
+A full example (drawing, zoom, rotation) is in `test/stories/PageOverlay.stories.tsx`.
 
 **Printing and permissions.** pdf.js doesn't enforce a document's permissions. This
 library respects the print permission: `usePrint().canPrint` is false and `print()`
@@ -368,8 +407,9 @@ stable across minor versions; anything else in the markup may change.
 | --------------------------------------- | -------------------------------------------- | ------------------------------------------------ |
 | Viewer frame (`PdfViewerShell`)         | `rpv-viewer`                                 |                                                  |
 | Row under the toolbar (`PdfViewerBody`) | `rpv-viewer-body`                            |                                                  |
-| Page list (`PdfPages`)                  | `rpv-pages`                                  | `data-cursor="text" \| "hand"`, `data-dragging`  |
+| Page list (`PdfPages`)                  | `rpv-pages`                                  | `data-cursor="<mode>"`, `data-dragging`          |
 | One page                                | `rpv-page`                                   | `data-page-number`                               |
+| Your overlay on a page                  | `rpv-page-overlay`                           |                                                  |
 | Loading / error message                 | `rpv-status`                                 |                                                  |
 | Thumbnail list (`PdfThumbnails`)        | `rpv-thumbnails`                             |                                                  |
 | One thumbnail (button)                  | `rpv-thumbnail`                              | `data-current`                                   |

@@ -73,6 +73,29 @@
     }
   }
 
+  /* Detail canvas: the visible part of a zoomed-in page at full resolution, over the
+     page canvas. Positioned in % of the page, so it stretches with it while zooming. */
+  .rpv-page-detail {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+
+    & > canvas {
+      position: absolute;
+      display: block;
+    }
+  }
+
+  /* The app's own layer (renderPageOverlay), above the text and annotation layers.
+     It ignores the pointer so text selection and links work beneath it; the app sets
+     `pointer-events: auto` on what should take input. */
+  .rpv-page-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+
   /* Text layer: mirrors pdf.js' own .textLayer rules (physical properties on
      purpose: pdf.js positions glyphs in page space, not writing-mode space). */
   .rpv-text-layer {

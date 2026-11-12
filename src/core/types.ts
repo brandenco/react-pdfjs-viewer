@@ -1,5 +1,7 @@
 import type { getDocument, PDFDocumentProxy } from "pdfjs-dist";
 
+import type { PageGeometry } from "./page-geometry.ts";
+
 /** Anything pdf.js can open. Binary data is copied before being handed to the worker. */
 export type PdfSource = string | URL | Uint8Array | ArrayBuffer;
 
@@ -8,8 +10,16 @@ export type DocumentInitParameters = NonNullable<Parameters<typeof getDocument>[
 
 export type LoadStatus = "idle" | "loading" | "ready" | "error";
 
-/** `text` selects text; `hand` drags to pan. */
-export type CursorMode = "text" | "hand";
+/** The cursor modes the viewer implements: `text` selects text; `hand` drags to pan. */
+export type BuiltInCursorMode = "text" | "hand";
+
+/**
+ * A built-in mode, or any other string for a mode your app implements (`"draw"`, say).
+ * The viewer gives other modes no behavior of its own: it sets `data-cursor="<mode>"`
+ * on the page list for styling, and you handle input in a page overlay
+ * (`<PdfPages renderPageOverlay>`).
+ */
+export type CursorMode = BuiltInCursorMode | (string & {});
 
 export type ZoomPreset = "page-width" | "page-fit";
 
@@ -71,6 +81,11 @@ export interface ViewerState {
   readonly numPages: number;
   /** Size of every page; estimated from page 1 until the real sizes have loaded. */
   readonly pageSizes: readonly PageSize[];
+  /**
+   * Each page's view box and own rotation, for converting between PDF and on-screen
+   * coordinates. Estimated from page 1 until the real ones have loaded, like `pageSizes`.
+   */
+  readonly pageGeometries: readonly PageGeometry[];
   /** 1-based page currently in view. */
   readonly currentPage: number;
   /** 1 = 100% (real-world size). */

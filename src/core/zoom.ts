@@ -37,6 +37,20 @@ export function fitScale(
   return Math.floor(scale * 1000) / 1000;
 }
 
+/** Pixels of wheel movement that zoom by a factor of e. Smaller zooms faster. */
+const WHEEL_ZOOM_SPEED = 100;
+/**
+ * The most one wheel event can count for, in px. A mouse wheel notch reports about
+ * 100px (Windows) and would zoom by e^1 ≈ 2.7× at once; capped, it's about 1.28×.
+ * Trackpad pinches and smooth scrolling report small deltas and stay proportional.
+ */
+const MAX_WHEEL_DELTA = 25;
+
+/** How much one Ctrl/Cmd + wheel event (or trackpad pinch step) zooms by. */
+export function wheelZoomFactor(deltaPixels: number): number {
+  return Math.exp(-clamp(deltaPixels, -MAX_WHEEL_DELTA, MAX_WHEEL_DELTA) / WHEEL_ZOOM_SPEED);
+}
+
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }

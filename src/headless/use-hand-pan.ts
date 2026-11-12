@@ -21,8 +21,11 @@ export function useHandPan(isEnabled: boolean): HandPanHandlers {
 
   function onPointerDown(event: PointerEvent<HTMLElement>): void {
     if (event.button !== 0 || event.pointerType === "touch") return;
-    // Links (in the annotation layer) stay clickable in hand mode.
-    if (event.target instanceof Element && event.target.closest("a[href]")) return;
+    // Links (in the annotation layer) stay clickable in hand mode, and the app's page
+    // overlays handle their own input (it only gets the pointer where the app asked).
+    if (event.target instanceof Element && event.target.closest("a[href], .rpv-page-overlay")) {
+      return;
+    }
 
     const container = event.currentTarget;
     dragStart.current = {

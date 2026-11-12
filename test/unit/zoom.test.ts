@@ -1,7 +1,14 @@
 import { describe, expect, test } from "vitest";
 
 import { PDF_TO_CSS_UNITS } from "../../src/core/pdfjs.ts";
-import { clamp, fitScale, nextZoomStep, previousZoomStep } from "../../src/core/zoom.ts";
+import { PdfViewerStore } from "../../src/core/store.ts";
+import {
+  clamp,
+  fitScale,
+  nextZoomStep,
+  previousZoomStep,
+  wheelZoomFactor,
+} from "../../src/core/zoom.ts";
 
 describe("zoom steps", () => {
   test("step to the next level above or below the current scale", () => {
@@ -45,4 +52,25 @@ test("clamp", () => {
   expect(clamp(5, 0, 3)).toBe(3);
   expect(clamp(-1, 0, 3)).toBe(0);
   expect(clamp(2, 0, 3)).toBe(2);
+});
+
+describe("wheelZoomFactor", () => {
+  test("caps a mouse wheel notch instead of zooming 2.7× at once", () => {
+    expect(wheelZoomFactor(-100)).toBeCloseTo(Math.exp(0.25));
+    expect(wheelZoomFactor(100)).toBeCloseTo(Math.exp(-0.25));
+  });
+
+  test("keeps small trackpad deltas proportional", () => {
+    expect(wheelZoomFactor(-4)).toBeCloseTo(Math.exp(0.04));
+    expect(wheelZoomFactor(0)).toBe(1);
+  });
+
+  test("a slow pinch's tiny steps add up: the store doesn't round the scale", () => {
+    const store = new PdfViewerStore();
+    store.setScale(1);
+    for (let step = 0; step < 100; step++) {
+      store.setScale(store.getState().scale * wheelZoomFactor(-0.1));
+    }
+    expect(store.getState().scale).toBeCloseTo(Math.exp(0.1));
+  });
 });

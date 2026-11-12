@@ -184,6 +184,15 @@ export const InteractionHooks: Story = {
     await userEvent.keyboard("{Control>}f{/Control}");
     const searchField = await canvas.findByRole("searchbox", { name: "Search" });
     await userEvent.type(searchField, "Milestone");
+    const typedAt = performance.now();
+    // The count shows as soon as the search is done, but the announcement waits until
+    // typing has stopped for 500ms, so screen readers don't read a count per pause.
+    const announcement = canvas.getByRole("status", { name: "Announcement" });
+    await waitFor(
+      () => expect(canvas.getByRole("status", { name: "Result count" })).toHaveTextContent("/ 5"),
+      { timeout: 5000 },
+    );
+    if (performance.now() - typedAt < 450) await expect(announcement).toBeEmptyDOMElement();
     // Five matches (page 1 links to "milestone 2" too). The reader is on page 7, so the
     // first one after it is active: milestone 1, on page 10.
     await waitFor(

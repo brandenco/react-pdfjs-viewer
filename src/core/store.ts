@@ -1,6 +1,6 @@
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist";
 
-import { filenameFromSource, getPageSize, readPageSizes, toInitSource } from "./document.ts";
+import { filenameFromSource, readPageGeometries, toInitSource } from "./document.ts";
 import { saveAsFile } from "./download.ts";
 import {
   resolveDestination,
@@ -8,6 +8,13 @@ import {
   type PageTarget,
   type PdfDestination,
 } from "./navigation.ts";
+import {
+  isSameGeometry,
+  normalizeRotation,
+  pageSizeOf,
+  readPageGeometry,
+  type PageGeometry,
+} from "./page-geometry.ts";
 import { loadPdfjs } from "./pdfjs.ts";
 // Type-only, so it adds no static dependency: the module itself is imported on demand.
 import type * as SearchModuleTypes from "./search.ts";
@@ -115,8 +122,6 @@ export class PdfViewerStore {
   /** Where to scroll once a scroller attaches (navigation before `<PdfPages>` mounted). */
   #pendingTarget: PageTarget | null = null;
   readonly #initialPage: number;
-  /** Page sizes without the viewer's rotation; `pageSizes` in the state has it applied. */
-  #unrotatedSizes: readonly PageSize[] = [];
   #pageTextCache = new Map<number, Promise<PageText>>();
   #currentLoad: LoadAttempt | null = null;
   #searchController: AbortController | null = null;
@@ -143,6 +148,7 @@ export class PdfViewerStore {
       document: null,
       numPages: 0,
       pageSizes: [],
+      pageGeometries: [],
       currentPage: 1,
       ...this.#initialZoom,
       rotation: 0,
@@ -227,39 +233,39 @@ export class PdfViewerStore {
   async #showDocument(doc: PDFDocumentProxy, signal: AbortSignal): Promise<void> {
     // Show the document right away, assuming every page is the size of page 1.
     // The real sizes are filled in below without blocking.
-    const firstPageSize = getPageSize(await doc.getPage(1));
+    const firstPage = readPageGeometry(await doc.getPage(1));
     signal.throwIfAborted();
 
     const initialPage = clamp(Math.round(this.#initialPage), 1, doc.numPages);
-    this.#unrotatedSizes = Array.from({ length: doc.numPages }, () => firstPageSize);
+    const pageGeometries = Array.from({ length: doc.numPages }, () => firstPage);
     this.#update({
       status: "ready",
       document: doc,
       numPages: doc.numPages,
-      pageSizes: this.#unrotatedSizes,
+      pageGeometries,
+      pageSizes: sizesOf(pageGeometries, this.#state.rotation),
       currentPage: initialPage,
     });
     this.#applyZoomPreset();
     if (initialPage > 1) this.#scrollTo({ pageIndex: initialPage - 1 });
 
-    for await (const batch of readPageSizes(doc)) {
+    for await (const batch of readPageGeometries(doc)) {
       if (signal.aborted) return;
-      this.#updatePageSizes(batch);
+      this.#updatePageGeometries(batch);
     }
   }
 
-  #updatePageSizes(sizes: [pageIndex: number, size: PageSize][]): void {
-    let unrotated: PageSize[] | null = null;
-    for (const [pageIndex, size] of sizes) {
-      const current = this.#unrotatedSizes[pageIndex];
-      if (current?.width === size.width && current.height === size.height) continue;
+  #updatePageGeometries(batch: [pageIndex: number, geometry: PageGeometry][]): void {
+    const current = this.#state.pageGeometries;
+    let next: PageGeometry[] | null = null;
+    for (const [pageIndex, geometry] of batch) {
+      if (isSameGeometry(current[pageIndex], geometry)) continue;
 
-      unrotated ??= [...this.#unrotatedSizes]; // copy only if something changed
-      unrotated[pageIndex] = size;
+      next ??= [...current]; // copy only if something changed
+      next[pageIndex] = geometry;
     }
-    if (!unrotated) return;
-    this.#unrotatedSizes = unrotated;
-    this.#update({ pageSizes: rotateSizes(unrotated, this.#state.rotation) });
+    if (!next) return;
+    this.#update({ pageGeometries: next, pageSizes: sizesOf(next, this.#state.rotation) });
   }
 
   /** Back to "no document". Cursor mode and the sidebar are user preferences, so they stay. */
@@ -271,7 +277,6 @@ export class PdfViewerStore {
     this.#pageTextCache = new Map();
     this.#matchToReveal = null;
     this.#pendingTarget = null;
-    this.#unrotatedSizes = [];
     this.thumbnails.clear();
 
     this.#update({
@@ -280,6 +285,7 @@ export class PdfViewerStore {
       document: null,
       numPages: 0,
       pageSizes: [],
+      pageGeometries: [],
       currentPage: 1,
       ...this.#initialZoom,
       rotation: 0,
@@ -400,7 +406,7 @@ export class PdfViewerStore {
 
     // Rendered thumbnails show the old orientation.
     this.thumbnails.clear();
-    this.#update({ rotation, pageSizes: rotateSizes(this.#unrotatedSizes, rotation) });
+    this.#update({ rotation, pageSizes: sizesOf(this.#state.pageGeometries, rotation) });
     this.#applyZoomPreset();
   }
 
@@ -420,6 +426,7 @@ export class PdfViewerStore {
     if (mode !== this.#state.cursorMode) this.#update({ cursorMode: mode });
   }
 
+  /** Switches between "text" and "hand". From any other mode (your own), goes to "text". */
   toggleCursorMode(): void {
     this.setCursorMode(this.#state.cursorMode === "text" ? "hand" : "text");
   }
@@ -636,14 +643,12 @@ function loadSearch(): Promise<SearchModule> {
   return searchModule;
 }
 
-function normalizeRotation(degrees: number): Rotation {
-  const quarterTurns = ((Math.round(degrees / 90) % 4) + 4) % 4;
-  return ([0, 90, 180, 270] as const)[quarterTurns]!;
-}
-
-function rotateSizes(sizes: readonly PageSize[], rotation: Rotation): readonly PageSize[] {
-  if (rotation % 180 === 0) return sizes;
-  return sizes.map(({ width, height }) => ({ width: height, height: width }));
+/** Page sizes at scale 1, with each page's own rotation and the viewer's applied. */
+function sizesOf(geometries: readonly PageGeometry[], rotation: Rotation): readonly PageSize[] {
+  return geometries.map((geometry) => {
+    const { width, height } = pageSizeOf(geometry);
+    return rotation % 180 === 0 ? { width, height } : { width: height, height: width };
+  });
 }
 
 function toError(error: unknown): Error {

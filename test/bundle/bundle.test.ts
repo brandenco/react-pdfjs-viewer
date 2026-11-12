@@ -160,8 +160,8 @@ describe("consumer bundles", { timeout: 30_000 }, () => {
   // so it isn't counted. Raise a budget deliberately, along with the feature that needs it.
   test.each([
     ["hooks only", HOOKS_APP, 6_000],
-    ["headless pages", HEADLESS_APP("react-pdfjs-viewer/headless"), 12_000],
-    ["complete viewer", VIEWER_APP, 22_000],
+    ["headless pages", HEADLESS_APP("react-pdfjs-viewer/headless"), 13_500],
+    ["complete viewer", VIEWER_APP, 23_500],
   ])("size budget: %s", async (name, source, budget) => {
     const { gzip } = await bundle(source, { minify: true });
     console.info(`${name}: ${(gzip / 1000).toFixed(1)} kB gzipped`);

@@ -70,9 +70,17 @@ export { usePrint, type Print, type PrintProgress } from "./headless/use-print.t
 
 // Rendering primitives
 export { PdfPages, type PdfPagesProps } from "./headless/PdfPages.tsx";
+export type { PageOverlayInfo } from "./headless/PdfPage.tsx";
+export {
+  createPageTransform,
+  type PageGeometry,
+  type PageTransform,
+  type ViewportRect,
+} from "./core/page-geometry.ts";
 export { PdfThumbnails, type PdfThumbnailsProps } from "./headless/PdfThumbnails.tsx";
 
 export type {
+  BuiltInCursorMode,
   CursorMode,
   DocumentInitParameters,
   LoadStatus,

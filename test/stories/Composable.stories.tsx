@@ -4,6 +4,7 @@ import {
   PdfPages,
   PdfThumbnails,
   PdfViewerProvider,
+  useRotation,
   useSearch,
   type PdfSource,
 } from "react-pdfjs-viewer/headless";
@@ -25,7 +26,7 @@ import {
   workerSrc,
   type DocumentArgs,
 } from "../fixtures/documents.ts";
-import { waitForDocument } from "./helpers.ts";
+import { waitForDocument, waitForRenderedPage } from "./helpers.ts";
 
 /**
  * The default viewer's pieces, assembled by hand from the `/headless` and `/ui` entry
@@ -151,5 +152,91 @@ export const StyleProps: Story = {
 
     const zoom = canvasElement.querySelector<HTMLElement>(".rpv-zoom-controls.x1abc.x2def");
     await expect(zoom?.style.getPropertyValue("--x-gap")).toBe("12px");
+  },
+};
+
+function pixelsPerCssPx(canvas: HTMLCanvasElement): number {
+  return canvas.width / canvas.getBoundingClientRect().width;
+}
+
+/**
+ * Zoomed in past `maxCanvasPixels`, the page canvas has fewer pixels than the screen; the
+ * visible part is drawn again on a detail canvas at full resolution.
+ */
+export const SharpAtHighZoom: Story = {
+  render: (_args, { loaded }) => (
+    <PdfViewerProvider src={loadedDocument(loaded)} workerSrc={workerSrc} initialScale={2}>
+      {/* At 200%, a page is about 1632 × 2112 px: over the cap, while the visible part
+          (at most 800 × 500) is under it. */}
+      <PdfPages style={{ width: 800, height: 500 }} maxCanvasPixels={1000 * 1000} />
+    </PdfViewerProvider>
+  ),
+  async play({ canvasElement }) {
+    await waitForRenderedPage(canvasElement);
+    const firstPage = canvasElement.querySelector<HTMLElement>('.rpv-page[data-page-number="1"]')!;
+    const base = firstPage.querySelector<HTMLCanvasElement>(".rpv-page-canvas canvas")!;
+    const detail = await waitFor(
+      () => {
+        const canvas = firstPage.querySelector<HTMLCanvasElement>(".rpv-page-detail canvas");
+        if (!canvas) throw new Error("No detail canvas yet");
+        return canvas;
+      },
+      { timeout: 5000 },
+    );
+
+    // The page canvas is capped well below the screen's density; the detail canvas isn't.
+    await expect(pixelsPerCssPx(base)).toBeLessThan(0.6 * globalThis.devicePixelRatio);
+    await expect(pixelsPerCssPx(detail)).toBeCloseTo(globalThis.devicePixelRatio, 1);
+    // It covers the visible part of the page, not the whole page.
+    const pageRect = firstPage.getBoundingClientRect();
+    await expect(detail.getBoundingClientRect().height).toBeLessThan(pageRect.height);
+  },
+};
+
+function RotateButton(): ReactNode {
+  const { rotateClockwise } = useRotation();
+  return (
+    <button type="button" onClick={rotateClockwise}>
+      Rotate
+    </button>
+  );
+}
+
+/**
+ * Until a rotated page is re-rendered, its old canvas, text and links are turned to
+ * match, instead of being squeezed upright into the rotated page box.
+ */
+export const RotationTransition: Story = {
+  render: (_args, { loaded }) => (
+    <PdfViewerProvider src={loadedDocument(loaded)} workerSrc={workerSrc} initialScale={1}>
+      <RotateButton />
+      {/* A long delay, so the in-between state can be checked. */}
+      <PdfPages style={{ height: 500 }} renderDelay={500} />
+    </PdfViewerProvider>
+  ),
+  async play({ canvas, canvasElement, userEvent }) {
+    await waitForRenderedPage(canvasElement);
+    const page = canvasElement.querySelector<HTMLElement>('.rpv-page[data-page-number="1"]')!;
+    const canvasLayer = page.querySelector<HTMLElement>(".rpv-page-canvas")!;
+    const textLayer = page.querySelector<HTMLElement>(".rpv-page-text")!;
+    const oldCanvas = page.querySelector("canvas");
+
+    await userEvent.click(canvas.getByRole("button", { name: "Rotate" }));
+    // The page box is landscape now; the old (portrait) rendering is turned into it.
+    const box = page.getBoundingClientRect();
+    await expect(box.width).toBeGreaterThan(box.height);
+    await expect(canvasLayer.style.transform).toBe("rotate(90deg)");
+    await expect(textLayer.style.transform).toBe("rotate(90deg)");
+    const turned = canvasLayer.getBoundingClientRect(); // after the transform
+    await expect(turned.width).toBeCloseTo(box.width, 0);
+    await expect(turned.height).toBeCloseTo(box.height, 0);
+    await expect(page.querySelector("canvas")).toBe(oldCanvas);
+
+    // Re-rendered at the new rotation: new canvas, no transform.
+    await waitFor(() => expect(page.querySelector("canvas")).not.toBe(oldCanvas), {
+      timeout: 5000,
+    });
+    await expect(canvasLayer.style.transform).toBe("");
+    await expect(textLayer.style.transform).toBe("");
   },
 };

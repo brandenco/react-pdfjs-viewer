@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   type CSSProperties,
+  type PointerEvent,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -17,8 +18,9 @@ import type { PagePosition } from "../core/navigation.ts";
 import { PDF_TO_CSS_UNITS } from "../core/pdfjs.ts";
 import type { PdfViewerStore } from "../core/store.ts";
 import type { PageSize } from "../core/types.ts";
+import { wheelZoomFactor } from "../core/zoom.ts";
 import { usePdfViewerState, usePdfViewerStore } from "./context.tsx";
-import { PdfPage } from "./PdfPage.tsx";
+import { PdfPage, type PageOverlayInfo } from "./PdfPage.tsx";
 import { useHandPan } from "./use-hand-pan.ts";
 import { useVirtualList } from "./use-virtual-list.ts";
 
@@ -31,7 +33,17 @@ export interface PdfPagesProps {
   overscan?: number | undefined;
   /** How long a page must stay in view before it renders, in ms. Default 60. */
   renderDelay?: number | undefined;
-  /** Maximum pixels per page canvas. Default 4096 × 4096. */
+  /**
+   * How long to wait after a zoom step before re-rendering pages at the new scale, in ms.
+   * Longer than `renderDelay`, because a wheel or pinch zoom is many steps in a row; the
+   * old rendering is shown stretched until then. Default 400.
+   */
+  zoomRenderDelay?: number | undefined;
+  /**
+   * Maximum pixels per page canvas. Default 4096 × 4096. Zoomed in past this, the visible
+   * part of the page is drawn again on a second canvas at full resolution, so it stays
+   * sharp.
+   */
   maxCanvasPixels?: number | undefined;
   /**
    * Renders the annotation layer, which makes links clickable: links within the document
@@ -40,6 +52,20 @@ export interface PdfPagesProps {
   annotations?: boolean | undefined;
   /** Where external links open, as an `<a target>`. Default `"_blank"`. */
   externalLinkTarget?: string | undefined;
+  /**
+   * Your own layer on each mounted page (bounding boxes, highlights, a drawing surface),
+   * above the canvas, text and annotation layers. It's rendered in a box the size of the
+   * page, which follows zoom and rotation; `page` converts between PDF and on-screen
+   * coordinates. Store positions in PDF units so they survive zoom and rotation.
+   *
+   * The box ignores the pointer (`pointer-events: none`), so text selection and links
+   * keep working beneath it: set `pointer-events: auto` on what should take input. Hand
+   * mode doesn't pan from anything in the overlay.
+   *
+   * The pages are memoized: pass a stable function (`useCallback`) so they only re-render
+   * when the function changes. It runs inside the provider, so the viewer's hooks work.
+   */
+  renderPageOverlay?: ((page: PageOverlayInfo) => ReactNode) | undefined;
   /** Shown while the document loads. Default: a "Loading document…" status message. */
   loadingFallback?: ReactNode | undefined;
   /** Shown when the document fails to load. Default: an alert with the error message. */
@@ -54,11 +80,13 @@ export function PdfPages(props: PdfPagesProps): ReactNode {
     gap = 16,
     overscan = 0.5,
     renderDelay = 60,
+    zoomRenderDelay = 400,
     maxCanvasPixels = 4096 * 4096,
     annotations = true,
     externalLinkTarget = "_blank",
     loadingFallback = <DefaultLoading />,
     errorFallback = defaultError,
+    renderPageOverlay,
   } = props;
 
   const store = usePdfViewerStore();
@@ -66,6 +94,7 @@ export function PdfPages(props: PdfPagesProps): ReactNode {
   const error = usePdfViewerState((state) => state.error);
   const doc = usePdfViewerState((state) => state.document);
   const pageSizes = usePdfViewerState((state) => state.pageSizes);
+  const pageGeometries = usePdfViewerState((state) => state.pageGeometries);
   const scale = usePdfViewerState((state) => state.scale);
   const cursorMode = usePdfViewerState((state) => state.cursorMode);
   const rotation = usePdfViewerState((state) => state.rotation);
@@ -110,6 +139,17 @@ export function PdfPages(props: PdfPagesProps): ReactNode {
   usePinchZoom(containerRef, store, scrollAnchor);
   const panHandlers = useHandPan(cursorMode === "hand");
 
+  function onPointerDown(event: PointerEvent<HTMLElement>): void {
+    panHandlers.onPointerDown?.(event);
+    // Cancelling pointerdown (panning, or drawing in a page overlay) also cancels the
+    // focus a click would give the page list, and with it arrow-key scrolling and the
+    // find shortcut. React runs this after the overlay's own handlers, so it sees them.
+    const container = event.currentTarget;
+    if (event.defaultPrevented && !container.contains(document.activeElement)) {
+      container.focus({ preventScroll: true });
+    }
+  }
+
   return (
     <section
       ref={containerRef}
@@ -122,6 +162,7 @@ export function PdfPages(props: PdfPagesProps): ReactNode {
       // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={0}
       {...panHandlers}
+      onPointerDown={onPointerDown}
     >
       {status === "loading" && loadingFallback}
       {status === "error" && error && errorFallback(error)}
@@ -147,8 +188,11 @@ export function PdfPages(props: PdfPagesProps): ReactNode {
               width={pageSizes[pageIndex]!.width * cssScale}
               height={layout.heights[pageIndex]!}
               renderDelay={renderDelay}
+              zoomRenderDelay={zoomRenderDelay}
               maxCanvasPixels={maxCanvasPixels}
               linkService={linkService}
+              geometry={pageGeometries[pageIndex]!}
+              renderOverlay={renderPageOverlay}
             />
           ))}
         </ul>
@@ -409,9 +453,6 @@ function usePageScroller(
   }, [containerRef, store, scrollAnchor]);
 }
 
-/** Pixels of wheel movement that zoom by a factor of e. Smaller zooms faster. */
-const WHEEL_ZOOM_SPEED = 100;
-
 /** Safari's trackpad pinch events. Not in the DOM typings, since only Safari has them. */
 interface GestureEvent extends MouseEvent {
   readonly scale: number;
@@ -451,8 +492,9 @@ function usePinchZoom(
           : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
             ? event.deltaY * container!.clientHeight
             : event.deltaY;
-      const factor = Math.exp(-pixels / WHEEL_ZOOM_SPEED);
-      zoomAround(event.clientX, event.clientY, store.getState().scale * factor);
+      // Reads the store's scale, which is never rounded, so a slow pinch's many tiny
+      // steps add up instead of being lost.
+      zoomAround(event.clientX, event.clientY, store.getState().scale * wheelZoomFactor(pixels));
     }
 
     let gestureStartScale = 1;

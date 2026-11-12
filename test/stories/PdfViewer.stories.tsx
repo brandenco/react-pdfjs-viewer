@@ -496,13 +496,13 @@ export const WheelZoom: Story = {
 
     const wheel = new WheelEvent("wheel", {
       ...pointer,
-      deltaY: -50,
+      deltaY: -20, // under the per-event cap (25px), so it zooms by e^(20/100)
       ctrlKey: true,
       cancelable: true,
     });
     pages.dispatchEvent(wheel);
     await expect(wheel.defaultPrevented).toBe(true); // the web page itself doesn't zoom
-    await waitFor(() => expect(Number(zoom.value)).toBeCloseTo(Math.exp(0.5), 2));
+    await waitFor(() => expect(Number(zoom.value)).toBeCloseTo(Math.exp(0.2), 2));
 
     const after = pointUnder();
     await expect(after.page).toBe(before.page);

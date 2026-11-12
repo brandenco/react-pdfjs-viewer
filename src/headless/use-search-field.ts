@@ -17,6 +17,12 @@ export interface SearchFieldInputProps {
 export interface SearchFieldOptions {
   /** How long to wait after typing stops before searching, in ms. Default 250. */
   debounce?: number | undefined;
+  /**
+   * How long typing must have stopped before `announcement` speaks the result count, in
+   * ms. Longer than `debounce`, so a screen reader doesn't read out a count for every
+   * pause between keystrokes. Default 500.
+   */
+  announceDelay?: number | undefined;
   /** Called on Escape. Default: closes the search bar (`useSearch().setOpen(false)`). */
   onEscape?: (() => void) | undefined;
 }
@@ -28,8 +34,9 @@ export interface SearchField {
   /** The same as a sentence for screen readers: "Result 3 of 12, still searching". */
   spokenCountLabel: string;
   /**
-   * For an `aria-live` region: the spoken count once the search is done, otherwise empty,
-   * so screen readers aren't flooded while the count climbs.
+   * For an `aria-live` region: the spoken count once the search is done and typing has
+   * stopped (`announceDelay`), otherwise empty, so screen readers aren't flooded while
+   * the user types or the count climbs.
    */
   announcement: string;
   /** Everything `useSearch()` returns, for previous / next buttons and the like. */
@@ -42,9 +49,10 @@ export interface SearchField {
  * Escape closes. Also provides the result count, for the eye and for screen readers.
  */
 export function useSearchField(options: SearchFieldOptions = {}): SearchField {
-  const { debounce = 250 } = options;
+  const { debounce = 250, announceDelay = 500 } = options;
   const search = useSearch();
   const [query, setQuery] = useState(search.query);
+  const [isTyping, setIsTyping] = useState(false);
   const onEscape = options.onEscape ?? (() => search.setOpen(false));
 
   const startSearch = search.search;
@@ -53,13 +61,24 @@ export function useSearchField(options: SearchFieldOptions = {}): SearchField {
     return () => clearTimeout(timer);
   }, [query, debounce, startSearch]);
 
+  useEffect(() => {
+    if (!isTyping) return;
+    const timer = setTimeout(() => setIsTyping(false), announceDelay);
+    return () => clearTimeout(timer);
+    // Each keystroke restarts the wait: `query` isn't read, but its change is the trigger.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [query, isTyping, announceDelay]);
+
   const spoken = spokenCountLabel(search);
   return {
     inputProps: {
       type: "search",
       value: query,
       "aria-keyshortcuts": "Enter Shift+Enter",
-      onChange: (event) => setQuery(event.target.value),
+      onChange: (event) => {
+        setQuery(event.target.value);
+        setIsTyping(true);
+      },
       onKeyDown: (event) => {
         if (event.key === "Escape") {
           onEscape();
@@ -73,7 +92,7 @@ export function useSearchField(options: SearchFieldOptions = {}): SearchField {
     },
     countLabel: shortCountLabel(search),
     spokenCountLabel: spoken,
-    announcement: search.status === "done" ? spoken : "",
+    announcement: search.status === "done" && !isTyping ? spoken : "",
     search,
   };
 }
