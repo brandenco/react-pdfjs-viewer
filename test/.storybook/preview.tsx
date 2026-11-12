@@ -7,6 +7,11 @@ const preview: Preview = {
     layout: "fullscreen",
     // Run axe on every story; any violation fails that story's test.
     a11y: { test: "error" },
+    // The complete viewer first, so Storybook opens on PdfViewer › Default; then the
+    // ways to build your own, from composed parts down to hooks.
+    options: {
+      storySort: { order: ["PdfViewer", "Composable", "Custom toolbar (hooks)"] },
+    },
   },
   decorators: [
     (Story) => (
