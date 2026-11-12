@@ -1,0 +1,41 @@
+{
+  // The published library. Only DOM types are visible here, so Node or Vite globals
+  // can't leak into code that ships to browsers. `nodenext` guarantees the emitted
+  // ESM is valid for any resolver, not only the bundler used during development.
+  "compilerOptions": {
+    "target": "es2024",
+    "lib": ["es2024", "dom", "dom.iterable"],
+    "module": "nodenext",
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "types": [],
+    "libReplacement": false,
+
+    // Type safety
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+
+    // Every file must be transpilable in isolation by oxc/esbuild/Node type stripping.
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "erasableSyntaxOnly": true,
+
+    // Output
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "isolatedDeclarations": true,
+    "rewriteRelativeImportExtensions": true,
+    "allowArbitraryExtensions": true,
+
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}

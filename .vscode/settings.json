@@ -1,0 +1,11 @@
+{
+  // Use the TypeScript 7 language server (from the recommended native-preview extension)
+  // instead of the editor's bundled TypeScript 5.9. Both spellings for older/newer builds.
+  "js/ts.experimental.useTsgo": true,
+  "typescript.experimental.useTsgo": true,
+
+  // Format and lint with the project's oxfmt/oxlint (oxc extension).
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "editor.formatOnSave": true,
+  "js/ts.tsdk.path": "node_modules/typescript"
+}

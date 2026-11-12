@@ -1,0 +1,313 @@
+/*
+ * react-pdfjs-viewer styles.
+ *
+ * Everything lives in the `rpv` cascade layer. Layered rules always lose to unlayered
+ * rules, so these can never override the host app's styles, and any app rule (even a
+ * low-specificity one) can override them.
+ *
+ * Theming: set any public `--rpv-*` token on the viewer or an ancestor (e.g. `:root`).
+ * Defaults follow the host page's `color-scheme` via `light-dark()`; set
+ * `color-scheme: dark` (or `light`) on the viewer to force one.
+ */
+@layer rpv {
+  /* ---------------------------------------------------------------------------
+   * Tokens. Private `--_rpv-*` values resolve public `--rpv-*` overrides first.
+   * ------------------------------------------------------------------------- */
+  :where(.rpv-viewer, .rpv-pages, .rpv-sidebar, .rpv-thumbnails) {
+    /* Fallback for browsers without light-dark(): follow the OS preference. */
+    --_rpv-background: var(--rpv-background, #e5e5e5);
+    --_rpv-surface: var(--rpv-surface, #fff);
+    --_rpv-surface-muted: var(--rpv-surface-muted, #f3f3f3);
+    --_rpv-surface-active: var(--rpv-surface-active, #e5e5e5);
+    --_rpv-text: var(--rpv-text, #262626);
+    --_rpv-text-muted: var(--rpv-text-muted, #6b6b6b);
+    --_rpv-border: var(--rpv-border, #d4d4d4);
+    --_rpv-accent: var(--rpv-accent, #2563eb);
+
+    @media (prefers-color-scheme: dark) {
+      --_rpv-background: var(--rpv-background, #1a1a1a);
+      --_rpv-surface: var(--rpv-surface, #262626);
+      --_rpv-surface-muted: var(--rpv-surface-muted, #2e2e2e);
+      --_rpv-surface-active: var(--rpv-surface-active, #3a3a3a);
+      --_rpv-text: var(--rpv-text, #e5e5e5);
+      --_rpv-text-muted: var(--rpv-text-muted, #a3a3a3);
+      --_rpv-border: var(--rpv-border, #404040);
+      --_rpv-accent: var(--rpv-accent, #60a5fa);
+    }
+
+    @supports (color: light-dark(white, black)) {
+      --_rpv-background: var(--rpv-background, light-dark(#e5e5e5, #1a1a1a));
+      --_rpv-surface: var(--rpv-surface, light-dark(#fff, #262626));
+      --_rpv-surface-muted: var(--rpv-surface-muted, light-dark(#f3f3f3, #2e2e2e));
+      --_rpv-surface-active: var(--rpv-surface-active, light-dark(#e5e5e5, #3a3a3a));
+      --_rpv-text: var(--rpv-text, light-dark(#262626, #e5e5e5));
+      --_rpv-text-muted: var(--rpv-text-muted, light-dark(#6b6b6b, #a3a3a3));
+      --_rpv-border: var(--rpv-border, light-dark(#d4d4d4, #404040));
+      --_rpv-accent: var(--rpv-accent, light-dark(#2563eb, #60a5fa));
+    }
+
+    /* Page "paper" and on-paper colors don't change with the color scheme. */
+    --_rpv-page-background: var(--rpv-page-background, #fff);
+    --_rpv-page-shadow: var(--rpv-page-shadow, 0 1px 3px rgb(0 0 0 / 0.25));
+    --_rpv-highlight: var(--rpv-highlight, rgb(255 200 0 / 0.45));
+    --_rpv-highlight-active: var(--rpv-highlight-active, rgb(255 120 0 / 0.55));
+    --_rpv-highlight-underline: var(--rpv-highlight-underline, #b45309);
+    --_rpv-selection: var(--rpv-selection, rgb(0 100 255 / 0.25));
+    --_rpv-radius: var(--rpv-radius, 8px);
+    --_rpv-duration: var(--rpv-duration, 220ms);
+    --_rpv-ease: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  /* ---------------------------------------------------------------------------
+   * Pages
+   * ------------------------------------------------------------------------- */
+  .rpv-pages {
+    position: relative;
+    block-size: 100%;
+    overflow: auto;
+    overscroll-behavior: contain;
+    background: var(--_rpv-background);
+    contain: strict;
+
+    &[data-cursor="hand"] {
+      cursor: grab;
+      /* Text selection is suppressed by the pan handler, not `user-select`, so
+         translation tools and assistive tech keep working on the text layer. */
+      & .rpv-text-layer :is(span, br) {
+        cursor: inherit;
+      }
+    }
+    &[data-cursor="hand"][data-dragging] {
+      cursor: grabbing;
+    }
+  }
+  .rpv-pages-inner {
+    position: relative;
+    min-inline-size: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  /* Loading and error messages. */
+  .rpv-status {
+    display: block;
+    margin: 0;
+    padding: 48px 16px;
+    /* Full-strength text: muted text on the page background is below 4.5:1 contrast. */
+    color: var(--_rpv-text);
+    text-align: center;
+  }
+  .rpv-page {
+    --scale-round-x: 1px;
+    --scale-round-y: 1px;
+    display: block;
+    position: absolute;
+    inset-inline: 0;
+    margin-inline: auto;
+    background: var(--_rpv-page-background);
+    box-shadow: var(--_rpv-page-shadow);
+    overflow: hidden;
+    contain: strict;
+  }
+  .rpv-page-canvas {
+    position: absolute;
+    inset: 0;
+
+    & > canvas {
+      display: block;
+      inline-size: 100%;
+      block-size: 100%;
+    }
+  }
+
+  /* Text layer — mirrors pdf.js' own .textLayer rules (physical properties on
+     purpose: pdf.js positions glyphs in page space, not writing-mode space). */
+  .rpv-text-layer {
+    position: absolute;
+    inset: 0;
+    text-align: initial;
+    overflow: clip;
+    opacity: 1;
+    line-height: 1;
+    letter-spacing: normal;
+    word-spacing: normal;
+    text-size-adjust: none;
+    forced-color-adjust: none;
+    transform-origin: 0 0;
+    caret-color: CanvasText;
+    z-index: 0;
+    color-scheme: only light;
+
+    --min-font-size: 1;
+    --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+    --min-font-size-inv: calc(1 / var(--min-font-size));
+
+    :is(span, br) {
+      color: transparent;
+      position: absolute;
+      white-space: pre;
+      cursor: text;
+      transform-origin: 0% 0%;
+    }
+    > :not(.markedContent),
+    .markedContent span:not(.markedContent) {
+      z-index: 1;
+      --font-height: 0;
+      font-size: calc(var(--text-scale-factor) * var(--font-height));
+      --scale-x: 1;
+      --rotate: 0deg;
+      transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+    }
+    .markedContent {
+      display: contents;
+    }
+    span[role="img"] {
+      user-select: none;
+      cursor: default;
+    }
+    ::selection {
+      background: var(--_rpv-selection);
+      color: transparent;
+    }
+    br::selection {
+      background: transparent;
+    }
+
+    /* Search matches: CSS Custom Highlight API. Text stays transparent so the
+       canvas glyphs show through; the active match also gets an underline so it
+       isn't distinguished by color alone. */
+    ::highlight(rpv-search-match) {
+      background-color: var(--_rpv-highlight);
+      color: transparent;
+    }
+    ::highlight(rpv-search-active) {
+      background-color: var(--_rpv-highlight-active);
+      color: transparent;
+      text-decoration: underline 2px var(--_rpv-highlight-underline);
+    }
+    /* Fallback for browsers without the Custom Highlight API. */
+    .rpv-mark {
+      position: static;
+      color: transparent;
+      background-color: var(--_rpv-highlight);
+      transform: none;
+    }
+    .rpv-mark-active {
+      background-color: var(--_rpv-highlight-active);
+      text-decoration: underline 2px var(--_rpv-highlight-underline);
+    }
+
+    @media (forced-colors: active) {
+      ::highlight(rpv-search-match) {
+        background-color: Mark;
+      }
+      ::highlight(rpv-search-active) {
+        background-color: Highlight;
+      }
+      .rpv-mark {
+        background-color: Mark;
+      }
+      .rpv-mark-active {
+        background-color: Highlight;
+      }
+    }
+  }
+
+  /* ---------------------------------------------------------------------------
+   * Thumbnails
+   * ------------------------------------------------------------------------- */
+  .rpv-thumbnails {
+    position: relative;
+    block-size: 100%;
+    overflow: auto;
+    overscroll-behavior: contain;
+    background: var(--_rpv-surface-muted);
+    contain: strict;
+  }
+  .rpv-thumbnails-inner {
+    position: relative;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .rpv-thumbnail-item {
+    position: absolute;
+    inset-inline: 0;
+    margin-inline: auto;
+  }
+  .rpv-thumbnail {
+    inline-size: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    color: var(--_rpv-text-muted);
+  }
+  .rpv-thumbnail-image {
+    display: block;
+    background: var(--_rpv-page-background);
+    box-shadow: var(--_rpv-page-shadow);
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+  .rpv-thumbnail[aria-current="page"] {
+    color: var(--_rpv-text);
+
+    & .rpv-thumbnail-image {
+      outline-color: var(--_rpv-accent);
+    }
+  }
+  .rpv-thumbnail:focus-visible {
+    outline: none;
+
+    & .rpv-thumbnail-image {
+      outline: 2px dashed var(--_rpv-accent);
+    }
+  }
+  .rpv-thumbnail-label {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  /* ---------------------------------------------------------------------------
+   * Sidebar: pushes the pages aside while its content slides in. Motion is opt-in
+   * so reduced-motion users get an instant open/close.
+   * ------------------------------------------------------------------------- */
+  .rpv-sidebar {
+    flex: none;
+    inline-size: 0;
+    block-size: 100%;
+    overflow: hidden;
+    background: var(--_rpv-surface-muted);
+
+    &[data-open] {
+      inline-size: var(--rpv-sidebar-width);
+      border-inline-end: 1px solid var(--_rpv-border);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: inline-size var(--_rpv-duration) var(--_rpv-ease);
+    }
+  }
+  .rpv-sidebar-inner {
+    inline-size: var(--rpv-sidebar-width);
+    block-size: 100%;
+    translate: -100% 0;
+
+    &:dir(rtl) {
+      translate: 100% 0;
+    }
+    .rpv-sidebar[data-open] > & {
+      translate: none;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: translate var(--_rpv-duration) var(--_rpv-ease);
+    }
+  }
+}

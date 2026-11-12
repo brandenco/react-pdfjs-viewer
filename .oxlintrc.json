@@ -1,0 +1,68 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react", "jsx-a11y", "import"],
+  "options": {
+    // Type-aware rules run on tsgolint, which uses the same TypeScript 7 (Go) compiler as tsc.
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "error",
+    "denyWarnings": true
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  "settings": {
+    "react": { "version": "19.3" }
+  },
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error",
+    "import/no-cycle": "error",
+    "import/no-unassigned-import": ["warn", { "allow": ["**/*.css"] }],
+    "typescript/consistent-type-imports": "error",
+
+    // Promise / async safety (type-aware)
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/await-thenable": "error",
+    "typescript/require-await": "error",
+    "typescript/return-await": ["error", "in-try-catch"],
+    "typescript/prefer-promise-reject-errors": "error",
+    "typescript/only-throw-error": "error",
+
+    // Type hygiene (type-aware)
+    "typescript/no-unnecessary-type-assertion": "error",
+    "typescript/no-unnecessary-condition": "error",
+    "typescript/no-unnecessary-type-arguments": "error",
+    "typescript/switch-exhaustiveness-check": "error",
+    "typescript/restrict-template-expressions": "error",
+    "typescript/no-base-to-string": "error",
+    "typescript/no-deprecated": "warn",
+    "typescript/prefer-nullish-coalescing": "error",
+    "typescript/prefer-optional-chain": "error",
+
+    // Conflicts with the React effect idiom (`if (!x) return;` alongside `return cleanup`).
+    "typescript/consistent-return": "off"
+  },
+  "overrides": [
+    {
+      // CSS declaration files only need to exist so `import "./x.css"` resolves.
+      "files": ["**/*.d.css.ts"],
+      "rules": { "unicorn/no-empty-file": "off" }
+    },
+    {
+      "files": ["test/**"],
+      "rules": {
+        // Vite's `?url` imports are typed by vite/client, which this rule can't see.
+        "import/default": "off"
+      }
+    }
+  ],
+  "ignorePatterns": ["dist", "storybook-static"]
+}

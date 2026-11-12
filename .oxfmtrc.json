@@ -1,0 +1,8 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  // Only non-defaults live here (defaults: printWidth 100, semicolons, double quotes,
+  // trailing commas). package.json key sorting is on by default.
+  "sortImports": true,
+  "sortPackageJson": true,
+  "ignorePatterns": ["dist", "storybook-static", "pnpm-lock.yaml"]
+}

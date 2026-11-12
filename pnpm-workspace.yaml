@@ -1,0 +1,7 @@
+# pnpm settings (pnpm 11+ reads these from here, not .npmrc).
+
+# Dependency install scripts are blocked unless listed here.
+allowBuilds:
+  # Its postinstall only double-checks the platform binary, which pnpm already
+  # installs as an optional dependency, so it isn't needed.
+  esbuild: false

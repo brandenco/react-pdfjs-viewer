@@ -1,0 +1,20 @@
+// Unit tests and stories. Storybook's "Run tests" button also uses this file.
+import { defineConfig } from "vitest/config";
+
+import { root, storybookProject } from "./vitest.shared.ts";
+
+export default defineConfig({
+  root,
+  test: {
+    projects: [
+      {
+        test: {
+          name: "unit",
+          include: ["test/unit/**/*.test.ts"],
+          environment: "node",
+        },
+      },
+      storybookProject("stories"),
+    ],
+  },
+});

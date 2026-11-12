@@ -1,0 +1,79 @@
+{
+  "name": "react-pdfjs-viewer",
+  "version": "0.0.0",
+  "description": "Headless-friendly, virtualized React PDF viewer built on pdfjs-dist",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./viewer.css": "./dist/viewer.css",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p . && cp src/*.css src/*.d.css.ts dist/",
+    "typecheck": "tsc -p . --noEmit && tsc -p test",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check",
+    "prepublishOnly": "pnpm check && pnpm test && pnpm build && pnpm lint:pkg",
+    "lint:pkg": "publint && attw --pack . --profile esm-only --exclude-entrypoints styles.css viewer.css",
+    "storybook": "storybook dev -p 6006 -c test/.storybook",
+    "build-storybook": "storybook build -c test/.storybook -o storybook-static",
+    "test": "pnpm test:main && pnpm test:compat",
+    "test:watch": "vitest --config test/vitest.config.ts",
+    "test:main": "vitest run --config test/vitest.config.ts",
+    "test:compat": "vitest run --config test/vitest.compat.config.ts"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@storybook/addon-a11y": "^10.6.7",
+    "@storybook/addon-vitest": "^10.6.7",
+    "@storybook/react-vite": "^10.6.7",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "@vitest/browser-playwright": "^5.1.0",
+    "oxfmt": "^0.78.0",
+    "oxlint": "^1.93.0",
+    "oxlint-tsgolint": "^7.0.2006",
+    "pdfjs-dist": "^6.5.438",
+    "pdfjs-dist-6.0": "npm:pdfjs-dist@6.0.227",
+    "playwright": "^1.65.0",
+    "publint": "^0.3.25",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "storybook": "^10.6.7",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.1.0"
+  },
+  "peerDependencies": {
+    "pdfjs-dist": "^6.0.0",
+    "react": ">=19.0.0",
+    "react-dom": ">=19.0.0"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^26.13.0",
+      "onFail": "download"
+    }
+  },
+  "packageManager": "pnpm@12.18.0"
+}

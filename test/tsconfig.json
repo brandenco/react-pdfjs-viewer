@@ -1,0 +1,18 @@
+{
+  // Stories, tests, fixtures and their tool configs: the library's settings plus Node,
+  // Vite and Vitest types. Type-check only; Vite and Vitest do the bundling.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "module": "preserve",
+    "types": ["node", "vite/client", "@vitest/browser-playwright"],
+    "noEmit": true,
+    "rootDir": "..",
+    "declaration": false,
+    "declarationMap": false,
+    "isolatedDeclarations": false,
+    "allowImportingTsExtensions": true,
+    // Type against the library's source rather than a possibly stale dist/.
+    "paths": { "react-pdfjs-viewer": ["../src/index.ts"] }
+  },
+  "include": [".", ".storybook"]
+}

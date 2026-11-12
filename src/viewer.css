@@ -1,0 +1,231 @@
+/*
+ * Styles for the default <PdfViewer> shell, <PdfToolbar> and <PdfSearchBar>.
+ * Imported by those components only, so headless setups (your own toolbar) never
+ * ship it. Uses the tokens defined in styles.css, in the same `rpv` layer.
+ */
+@layer rpv {
+  /* ---------------------------------------------------------------------------
+   * Default viewer shell + toolbar
+   * ------------------------------------------------------------------------- */
+  .rpv-viewer {
+    display: flex;
+    flex-direction: column;
+    block-size: 100%;
+    min-block-size: 0;
+    border: 1px solid var(--_rpv-border);
+    background: var(--_rpv-surface);
+    color: var(--_rpv-text);
+    font:
+      14px/1.4 system-ui,
+      sans-serif;
+    overflow: hidden;
+  }
+  .rpv-viewer-body {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-block-size: 0;
+
+    & > .rpv-pages {
+      flex: 1;
+      min-inline-size: 0;
+    }
+  }
+  .rpv-toolbar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 8px;
+    min-block-size: 44px;
+    padding: 4px 12px;
+    background: var(--_rpv-surface);
+    border-block-end: 1px solid var(--_rpv-border);
+  }
+  .rpv-toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-inline-size: 0;
+
+    &[data-align="end"] {
+      justify-content: flex-end;
+    }
+  }
+  .rpv-toolbar-separator {
+    inline-size: 1px;
+    block-size: 20px;
+    margin-inline: 6px;
+    background: var(--_rpv-border);
+  }
+  .rpv-button {
+    display: inline-grid;
+    place-items: center;
+    min-inline-size: 32px;
+    min-block-size: 32px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+
+    &:hover:not([aria-disabled="true"]) {
+      background: var(--_rpv-surface-muted);
+    }
+    &[aria-disabled="true"] {
+      color: var(--_rpv-text-muted);
+      cursor: default;
+    }
+    &:is([aria-pressed="true"], [aria-expanded="true"]) {
+      background: var(--_rpv-surface-active);
+    }
+    & svg {
+      inline-size: 18px;
+      block-size: 18px;
+    }
+
+    @media (pointer: coarse) {
+      min-inline-size: 44px;
+      min-block-size: 44px;
+    }
+  }
+  /* Cursor mode: a radio group styled as a segmented control. */
+  .rpv-segmented {
+    position: relative;
+    display: flex;
+    gap: 2px;
+    margin: 0;
+    padding: 2px;
+    border: 0;
+    min-inline-size: 0;
+    border-radius: var(--_rpv-radius);
+    background: var(--_rpv-surface-muted);
+  }
+  .rpv-segment {
+    display: inline-grid;
+    place-items: center;
+    min-inline-size: 30px;
+    min-block-size: 28px;
+    border-radius: 6px;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover:not(:has(:checked)) {
+      background: var(--_rpv-surface-active);
+    }
+    &:has(:checked) {
+      background: var(--_rpv-surface);
+      box-shadow: 0 1px 2px rgb(0 0 0 / 0.15);
+    }
+    /* The radio itself is visually hidden, so show its keyboard focus on the label. */
+    &:has(:focus-visible) {
+      outline: 2px solid var(--_rpv-accent);
+      outline-offset: 1px;
+    }
+    & svg {
+      inline-size: 18px;
+      block-size: 18px;
+    }
+
+    @media (pointer: coarse) {
+      min-inline-size: 44px;
+      min-block-size: 44px;
+    }
+  }
+  .rpv-input,
+  .rpv-select {
+    min-block-size: 30px;
+    padding: 0 8px;
+    border: 1px solid var(--_rpv-border);
+    border-radius: var(--_rpv-radius);
+    background: var(--_rpv-surface);
+    color: inherit;
+    font: inherit;
+  }
+  .rpv-page-input {
+    inline-size: 3.5em;
+    text-align: center;
+  }
+  .rpv-page-count {
+    color: var(--_rpv-text-muted);
+    white-space: nowrap;
+    margin-inline-end: 2px;
+  }
+  .rpv-select {
+    /* Fixed width: base-select no longer sizes to its longest option. */
+    inline-size: 8.5em;
+    cursor: pointer;
+  }
+
+  /* Customizable <select>: progressive enhancement over the native control. */
+  @supports (appearance: base-select) {
+    .rpv-select,
+    .rpv-select::picker(select) {
+      appearance: base-select;
+    }
+    .rpv-select {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      &::picker-icon {
+        color: var(--_rpv-text-muted);
+      }
+      &::picker(select) {
+        margin-block: 4px;
+        padding: 4px;
+        border: 1px solid var(--_rpv-border);
+        border-radius: var(--_rpv-radius);
+        background: var(--_rpv-surface);
+        color: var(--_rpv-text);
+        box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
+      }
+      & option {
+        padding: 6px 8px;
+        border-radius: 6px;
+
+        &:is(:hover, :focus-visible) {
+          background: var(--_rpv-surface-muted);
+        }
+        &::checkmark {
+          color: var(--_rpv-accent);
+        }
+      }
+    }
+  }
+
+  .rpv-search-bar {
+    position: absolute;
+    inset-block-start: 8px;
+    inset-inline-end: 16px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    border: 1px solid var(--_rpv-border);
+    border-radius: var(--_rpv-radius);
+    background: var(--_rpv-surface);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+
+    & .rpv-input {
+      inline-size: 14em;
+    }
+  }
+  .rpv-search-count {
+    min-inline-size: 4.5em;
+    color: var(--_rpv-text-muted);
+    font-size: 12px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .rpv-visually-hidden {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
