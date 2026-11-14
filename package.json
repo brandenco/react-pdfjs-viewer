@@ -1,6 +1,6 @@
 {
   "name": "@brandenco/react-pdfjs-viewer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Headless-friendly, virtualized React PDF viewer built on pdfjs-dist",
   "keywords": [
     "headless",
