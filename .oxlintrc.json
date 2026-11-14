@@ -57,12 +57,12 @@
       "rules": { "unicorn/no-empty-file": "off" }
     },
     {
-      "files": ["test/**"],
+      "files": ["test/**", "example/**"],
       "rules": {
         // Vite's `?url` imports are typed by vite/client, which this rule can't see.
         "import/default": "off"
       }
     }
   ],
-  "ignorePatterns": ["dist", "storybook-static"]
+  "ignorePatterns": ["dist", "storybook-static", "example-dist"]
 }

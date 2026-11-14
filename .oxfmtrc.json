@@ -4,5 +4,5 @@
   // trailing commas). package.json key sorting is on by default.
   "sortImports": true,
   "sortPackageJson": true,
-  "ignorePatterns": ["dist", "storybook-static", "pnpm-lock.yaml"]
+  "ignorePatterns": ["dist", "storybook-static", "example-dist", "pnpm-lock.yaml"]
 }

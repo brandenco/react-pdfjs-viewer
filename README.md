@@ -47,21 +47,10 @@ import "react-pdfjs-viewer/ui.css"; // once, anywhere in your app; see "Styling"
 ```
 
 The viewer fills its container, so give the container a height. `src` takes a URL, a
-`URL`, or the bytes (`Uint8Array` / `ArrayBuffer`). Other props:
-
-```tsx
-<PdfViewer
-  src={src}
-  workerSrc={workerSrc}
-  initialScale="page-width" // a number (1 = 100%), "page-fit" (default) or "page-width"
-  initialPage={3}
-  initialSidebarOpen
-  filename="report.pdf" // for downloads
-  documentOptions={{ password, cMapUrl, httpHeaders }} // passed to pdf.js getDocument()
-  onDocumentLoad={(document) => {}}
-  onError={(error) => {}}
-/>
-```
+`URL`, or the bytes (`Uint8Array` / `ArrayBuffer`). Other props set the initial zoom,
+page and sidebar, the download filename, options for pdf.js' `getDocument()` (password,
+cMaps, HTTP headers), and `onDocumentLoad` / `onError` callbacks: see
+[`CompleteViewer.tsx`](example/src/examples/CompleteViewer.tsx).
 
 ### pdf.js worker
 
@@ -80,6 +69,22 @@ const workerSrc = "/pdf.worker.min.mjs";
 `workerSrc` sets pdf.js' page-wide `GlobalWorkerOptions.workerSrc`. If you already set that
 yourself, leave `workerSrc` out. To share one worker between documents, pass a `PDFWorker`
 as `documentOptions={{ worker }}`.
+
+## Examples
+
+The [example app](example/) shows every way to use the library, one file per example.
+Run it with `pnpm example` (see "Development"); it opens a generated sample document,
+and you can open your own PDF.
+
+| Example                                                    | Shows                                                                               |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| [Complete viewer](example/src/examples/CompleteViewer.tsx) | `<PdfViewer>` and its props.                                                        |
+| [Composed viewer](example/src/examples/ComposedViewer.tsx) | `<PdfViewer>` assembled by hand from its pieces, with a sidebar of your own.        |
+| [Custom toolbar](example/src/examples/CustomToolbar.tsx)   | Your own toolbar from the built-in parts and `ToolbarButton`.                       |
+| [Headless](example/src/examples/Headless.tsx)              | Hooks and rendering primitives only, with your own UI.                              |
+| [Custom controls](example/src/examples/CustomControls.tsx) | `usePageField`, `useSearchField` and `useFindShortcut` on your own inputs.          |
+| [Page overlay](example/src/examples/PageOverlay.tsx)       | Drawing bounding boxes with your own cursor mode and page layer.                    |
+| [Document data](example/src/examples/DocumentData.tsx)     | Properties and permissions, your own document data, an outline tree, and the store. |
 
 ## Entry points
 
@@ -106,31 +111,10 @@ load on first use:
 
 ## Composing your own viewer
 
-Everything inside `<PdfViewer>` is exported. This is `<PdfViewer>`, assembled by hand:
-
-```tsx
-import { PdfPages, PdfThumbnails, PdfViewerProvider } from "react-pdfjs-viewer/headless";
-import {
-  PdfSearchBar,
-  PdfSidebar,
-  PdfToolbar,
-  PdfViewerBody,
-  PdfViewerShell,
-} from "react-pdfjs-viewer/ui";
-
-<PdfViewerProvider src={src} workerSrc={workerSrc}>
-  <PdfViewerShell>
-    <PdfToolbar />
-    <PdfViewerBody>
-      <PdfSidebar>
-        <PdfThumbnails />
-      </PdfSidebar>
-      <PdfPages />
-      <PdfSearchBar />
-    </PdfViewerBody>
-  </PdfViewerShell>
-</PdfViewerProvider>;
-```
+Everything inside `<PdfViewer>` is exported, so you can assemble it yourself
+(`PdfViewerProvider`, `PdfViewerShell`, `PdfToolbar`, `PdfViewerBody`, `PdfSidebar`,
+`PdfThumbnails`, `PdfPages`, `PdfSearchBar`) and change what you need: see
+[`ComposedViewer.tsx`](example/src/examples/ComposedViewer.tsx).
 
 No wiring props are needed: the pieces share state through the provider (the toolbar's
 search button opens the search bar, for example). `PdfViewerShell` adds the frame,
@@ -142,93 +126,21 @@ the toolbar's parts: `SidebarToggleButton`, `PageControls`, `ZoomControls`,
 `CursorModeSwitch`, `SearchToggleButton`, `RotateButton`, `FullscreenButton`,
 `PrintButton`, `DownloadButton`, `MoreActionsMenu` (rotate, full screen, print and
 download in a menu; the default toolbar switches to it when it's narrower than 760px),
-and `ToolbarButton` for your own. Each only uses public hooks:
-
-```tsx
-import { useZoom } from "react-pdfjs-viewer/headless";
-import {
-  PageControls,
-  PrintButton,
-  SearchToggleButton,
-  SidebarToggleButton,
-  ToolbarButton,
-  ZoomControls,
-} from "react-pdfjs-viewer/ui";
-
-function MyToolbar() {
-  const { setScale } = useZoom();
-  return (
-    <div className="my-toolbar">
-      <SidebarToggleButton />
-      <PageControls />
-      <ZoomControls />
-      <ToolbarButton label="Actual size" onClick={() => setScale(1)}>
-        1:1
-      </ToolbarButton>
-      <SearchToggleButton />
-      <PrintButton />
-    </div>
-  );
-}
-
-<PdfViewer src={src} workerSrc={workerSrc} toolbar={<MyToolbar />} />;
-```
+and `ToolbarButton` for your own. Each only uses public hooks: see
+[`CustomToolbar.tsx`](example/src/examples/CustomToolbar.tsx).
 
 **Sidebar views.** `<PdfViewer>` shows thumbnails, plus the outline for documents that
-have one. In your own sidebar, switch on `useSidebar().view`:
-
-```tsx
-import { PdfThumbnails, useSidebar } from "react-pdfjs-viewer/headless";
-import { PdfOutline, PdfSidebar, PdfSidebarViewSwitch } from "react-pdfjs-viewer/ui";
-
-function Sidebar() {
-  const { view } = useSidebar();
-  return (
-    <PdfSidebar width={220}>
-      <PdfSidebarViewSwitch />
-      {view === "outline" ? <PdfOutline /> : <PdfThumbnails />}
-    </PdfSidebar>
-  );
-}
-```
+have one. In your own sidebar, switch between `<PdfThumbnails>` and `<PdfOutline>` on
+`useSidebar().view`, with `<PdfSidebarViewSwitch>` to change it (also in
+[`ComposedViewer.tsx`](example/src/examples/ComposedViewer.tsx)).
 
 ## Headless
 
 Build any interface on the hooks. They must be used inside `<PdfViewerProvider>`, and
 `<PdfPages>` (or your own renderer, see below) shows the pages. Nothing from
 `react-pdfjs-viewer/ui` ends up in your bundle. Import `core.css` for the page layout,
-text selection and search highlights, and style everything else yourself.
-
-```tsx
-import "react-pdfjs-viewer/core.css";
-import {
-  PdfPages,
-  PdfViewerProvider,
-  usePageNavigation,
-  useZoom,
-} from "react-pdfjs-viewer/headless";
-
-function Toolbar() {
-  const { currentPage, numPages, nextPage, previousPage } = usePageNavigation();
-  const { zoomIn, zoomOut } = useZoom();
-  return (
-    <div>
-      <button onClick={previousPage}>Previous</button>
-      <span>
-        {currentPage} / {numPages}
-      </span>
-      <button onClick={nextPage}>Next</button>
-      <button onClick={zoomOut}>−</button>
-      <button onClick={zoomIn}>+</button>
-    </div>
-  );
-}
-
-<PdfViewerProvider src={src} workerSrc={workerSrc}>
-  <Toolbar />
-  <PdfPages style={{ height: 800 }} />
-</PdfViewerProvider>;
-```
+text selection and search highlights, and style everything else yourself. See
+[`Headless.tsx`](example/src/examples/Headless.tsx).
 
 Each hook subscribes only to the state it returns, so a component re-renders only when
 that changes. Actions (`goToPage`, `zoomIn`, …) keep their identity across renders, so
@@ -255,26 +167,10 @@ once per document, and shared by every component that asks.
 
 **Building your own controls.** The default UI's interaction logic is available as hooks
 that return props to spread on your own elements, so your controls behave the same:
-
-```tsx
-import { useRef } from "react";
-import { usePageField, useSearchField, useFindShortcut } from "react-pdfjs-viewer/headless";
-
-function Controls() {
-  const page = usePageField(); // labels, typing, Enter / Escape, IME-safe
-  const find = useSearchField({ debounce: 250 }); // search as you type, Enter / Shift+Enter, Escape
-  const ref = useRef<HTMLDivElement>(null);
-  useFindShortcut(ref); // Cmd/Ctrl+F opens the search instead of the browser's
-
-  return (
-    <div ref={ref}>
-      <input {...page.inputProps} aria-label="Page" /> {page.countLabel}
-      {find.search.isOpen && <input {...find.inputProps} aria-label="Find" />}
-      <output aria-label="Results">{find.countLabel}</output>
-    </div>
-  );
-}
-```
+`usePageField()` (page labels, typing, Enter / Escape, IME-safe), `useSearchField()`
+(search as you type, Enter / Shift+Enter, Escape) and `useFindShortcut(ref)` (Cmd/Ctrl+F
+opens your search instead of the browser's). See
+[`CustomControls.tsx`](example/src/examples/CustomControls.tsx).
 
 `useSearchField` also returns `spokenCountLabel` ("Result 3 of 12") and `announcement`
 (for an `aria-live` region; filled in once the search is done and typing has stopped
@@ -302,30 +198,10 @@ pans from inside an overlay.
 
 `setMode` takes any string, so an app can add its own cursor mode (say `"draw"`). The
 viewer gives it no behavior beyond `data-cursor="draw"` on the page list for styling:
-the overlay handles the input.
-
-```tsx
-const renderPageOverlay = useCallback(
-  (page: PageOverlayInfo) => <BoxLayer page={page} />, // stable: pages are memoized
-  [],
-);
-
-function BoxLayer({ page }: { page: PageOverlayInfo }) {
-  const { mode } = useCursorMode(); // the viewer's hooks work in overlays
-  return (
-    <>
-      {boxesOn(page.pageIndex).map((box) => (
-        <div key={box.id} className="box" style={page.toViewportRect(box.rect)} />
-      ))}
-      {mode === "draw" && <DrawSurface page={page} />} {/* pointer-events: auto */}
-    </>
-  );
-}
-
-<PdfPages renderPageOverlay={renderPageOverlay} />;
-```
-
-A full example (drawing, zoom, rotation) is in `test/stories/PageOverlay.stories.tsx`.
+the overlay handles the input. Pass a stable function (`useCallback`): the pages are
+memoized. The viewer's hooks work inside overlays. See
+[`PageOverlay.tsx`](example/src/examples/PageOverlay.tsx) for drawing boxes that follow
+zoom and rotation.
 
 **Printing and permissions.** pdf.js doesn't enforce a document's permissions. This
 library respects the print permission: `usePrint().canPrint` is false and `print()`
@@ -339,20 +215,9 @@ refuses when the document disallows printing, unless you pass
   anything this library doesn't wrap (`getPage`, `getAttachments`, `saveDocument`, …).
 - **Your own document data.** `useDocumentData(load)` runs `load(document)` once per
   document and shares the result, like `useOutline` does. `load` must be a module-level
-  function: it's the cache key.
-
-  ```tsx
-  import type { PDFDocumentProxy } from "pdfjs-dist";
-  import { useDocumentData } from "react-pdfjs-viewer/headless";
-
-  const loadAttachments = (doc: PDFDocumentProxy) => doc.getAttachments();
-
-  function Attachments() {
-    const { status, data } = useDocumentData(loadAttachments);
-    // …
-  }
-  ```
-
+  function: it's the cache key. See
+  [`DocumentData.tsx`](example/src/examples/DocumentData.tsx), which also uses the store
+  directly.
 - **State outside the hooks.** `usePdfViewerState(selector)` subscribes to any slice of
   `ViewerState`; the selector must return existing values, not build new objects.
   `usePdfViewerStore()` returns the `PdfViewerStore`, with every action as a method
@@ -435,6 +300,8 @@ Requires pnpm 12 (pinned in `packageManager`); pnpm downloads the pinned Node ru
 ```sh
 pnpm install
 pnpm exec playwright install chromium   # once, for browser tests
+pnpm example        # the example app on http://localhost:5173
+pnpm build:example  # builds it into example-dist/
 pnpm storybook      # stories on http://localhost:6006: every viewer state, plus a11y panel
 pnpm test           # everything below
 pnpm test:main      # unit tests + every story as a browser test (axe included)
@@ -445,6 +312,9 @@ pnpm build          # tsc → dist/ (ESM + .d.ts) and the CSS files
 pnpm test:bundle    # builds dist/, then bundles small consumer apps against it
 pnpm lint:pkg       # publint + are-the-types-wrong against the packed tarball
 ```
+
+The example app lives in `example/`: a Vite app that imports the package by name, like
+your app would, but runs against `src/`.
 
 Tests live in `test/`:
 
