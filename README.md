@@ -1,6 +1,8 @@
 # react-pdfjs-viewer
 
 [![npm](https://img.shields.io/npm/v/@brandenco/react-pdfjs-viewer)](https://www.npmjs.com/package/@brandenco/react-pdfjs-viewer)
+[![CI](https://github.com/brandenco/react-pdfjs-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/brandenco/react-pdfjs-viewer/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/@brandenco/react-pdfjs-viewer)](LICENSE)
 
 A virtualized React PDF viewer built on [`pdfjs-dist`](https://github.com/mozilla/pdf.js).
 Drop in the full viewer, rebuild it from its parts, or skip the UI entirely and use the
@@ -11,6 +13,9 @@ hooks. All three run on the same engine.
    your way.
 3. **Headless**: hooks and rendering primitives. None of the UI or its CSS ends up in
    your bundle.
+
+**[Live demo](https://brandenco.github.io/react-pdfjs-viewer/)**: every viewer state in
+Storybook.
 
 ## Features
 
@@ -30,6 +35,23 @@ hooks. All three run on the same engine.
 
 Also included: rotation, printing, full screen, download, a text selection / hand tool,
 virtualized thumbnails, and document properties and permissions.
+
+## Why this one?
+
+If you're picking a PDF viewer for React, you're usually choosing between:
+
+- **A rendering library** like [`react-pdf`](https://github.com/wojtekmaj/react-pdf). It
+  gives you components that render a document and its pages, and you build the viewer
+  around them: the toolbar, virtualization for long documents, search, zoom.
+- **pdf.js' own viewer**, embedded in an iframe or wired up from `pdfjs-dist/web`. It
+  has every feature, but its UI and state live outside React, so restyling it or driving
+  it from your components is hard.
+
+This library sits in between. You get a complete viewer in one component, and every
+part of it is a React component or hook you can replace, restyle, or use on its own.
+The state lives in hooks, so your components can read and drive the viewer directly.
+It stays small too: a viewer with the full UI is 22.4 kB gzipped up front, with pdf.js
+loaded on demand (see [Entry points](#entry-points)).
 
 ## Getting started
 
