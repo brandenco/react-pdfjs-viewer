@@ -1,5 +1,7 @@
 # react-pdfjs-viewer
 
+[![npm](https://img.shields.io/npm/v/@brandenco/react-pdfjs-viewer)](https://www.npmjs.com/package/@brandenco/react-pdfjs-viewer)
+
 A virtualized React PDF viewer built on [`pdfjs-dist`](https://github.com/mozilla/pdf.js),
 usable three ways, all running on the same viewer engine:
 
