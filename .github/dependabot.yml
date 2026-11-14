@@ -1,0 +1,20 @@
+# Opens PRs when dependencies release new versions. CI runs the full suite on each one,
+# and the ruleset on main blocks merging until it passes.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
+    groups:
+      # New pdf.js releases get their own PR, so a failure is clearly pdf.js' doing.
+      pdfjs:
+        patterns: ["pdfjs-dist"]
+    ignore:
+      # The compat tests' alias stays pinned to the oldest supported pdf.js (6.0).
+      - dependency-name: pdfjs-dist-6.0
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
