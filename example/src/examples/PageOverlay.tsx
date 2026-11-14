@@ -1,3 +1,13 @@
+import {
+  PdfPages,
+  PdfViewerProvider,
+  useCursorMode,
+  useRotation,
+  useZoom,
+  type PageOverlayInfo,
+  type PdfSource,
+  type ViewportRect,
+} from "@brandenco/react-pdfjs-viewer/headless";
 // Your own layer on each page, and your own cursor mode: bounding boxes drawn by hand.
 //
 // `renderPageOverlay` renders above the canvas, text and links, in a box the size of
@@ -19,16 +29,6 @@ import {
   type PointerEvent,
   type ReactNode,
 } from "react";
-import {
-  PdfPages,
-  PdfViewerProvider,
-  useCursorMode,
-  useRotation,
-  useZoom,
-  type PageOverlayInfo,
-  type PdfSource,
-  type ViewportRect,
-} from "react-pdfjs-viewer/headless";
 
 import { workerSrc } from "../pdf-worker.ts";
 

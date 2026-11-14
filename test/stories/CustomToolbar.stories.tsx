@@ -1,5 +1,3 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useRef, useState, type ReactNode } from "react";
 import {
   PdfPages,
   PdfSidebar,
@@ -11,8 +9,14 @@ import {
   useSidebar,
   useZoom,
   type PdfSource,
-} from "react-pdfjs-viewer";
-import { useFindShortcut, usePageField, useSearchField } from "react-pdfjs-viewer/headless";
+} from "@brandenco/react-pdfjs-viewer";
+import {
+  useFindShortcut,
+  usePageField,
+  useSearchField,
+} from "@brandenco/react-pdfjs-viewer/headless";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useRef, useState, type ReactNode } from "react";
 import { expect, waitFor } from "storybook/test";
 
 import {

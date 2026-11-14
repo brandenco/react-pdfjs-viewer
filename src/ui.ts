@@ -1,5 +1,5 @@
-// `react-pdfjs-viewer/ui`: the opinionated components. They're built only on the public
-// hooks from `react-pdfjs-viewer/headless`, and must be rendered inside a
+// `@brandenco/react-pdfjs-viewer/ui`: the opinionated components. They're built only on the public
+// hooks from `@brandenco/react-pdfjs-viewer/headless`, and must be rendered inside a
 // `<PdfViewerProvider>` (except `<PdfViewer>`, which renders its own).
 
 // The complete viewer

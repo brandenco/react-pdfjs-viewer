@@ -1,11 +1,3 @@
-// `<PdfViewer>` assembled by hand from its exported pieces, with a wider sidebar of your
-// own. No wiring props are needed: the pieces share state through the provider (the
-// toolbar's search button opens the search bar, for example).
-//
-// `PdfViewerShell` adds the frame, Cmd/Ctrl+F for search, and links the toolbar to the
-// sidebar and search bar for assistive tech. Without it the pieces still work; lay them
-// out with your own CSS.
-import type { ReactNode } from "react";
 import {
   PdfPages,
   PdfThumbnails,
@@ -13,7 +5,7 @@ import {
   useOutline,
   useSidebar,
   type PdfSource,
-} from "react-pdfjs-viewer/headless";
+} from "@brandenco/react-pdfjs-viewer/headless";
 import {
   PdfOutline,
   PdfSearchBar,
@@ -22,7 +14,15 @@ import {
   PdfToolbar,
   PdfViewerBody,
   PdfViewerShell,
-} from "react-pdfjs-viewer/ui";
+} from "@brandenco/react-pdfjs-viewer/ui";
+// `<PdfViewer>` assembled by hand from its exported pieces, with a wider sidebar of your
+// own. No wiring props are needed: the pieces share state through the provider (the
+// toolbar's search button opens the search bar, for example).
+//
+// `PdfViewerShell` adds the frame, Cmd/Ctrl+F for search, and links the toolbar to the
+// sidebar and search bar for assistive tech. Without it the pieces still work; lay them
+// out with your own CSS.
+import type { ReactNode } from "react";
 
 import { workerSrc } from "../pdf-worker.ts";
 

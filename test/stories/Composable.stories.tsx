@@ -1,5 +1,3 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { CSSProperties, ReactNode } from "react";
 import {
   PdfPages,
   PdfThumbnails,
@@ -7,7 +5,7 @@ import {
   useRotation,
   useSearch,
   type PdfSource,
-} from "react-pdfjs-viewer/headless";
+} from "@brandenco/react-pdfjs-viewer/headless";
 import {
   PdfSearchBar,
   PdfSidebar,
@@ -16,7 +14,9 @@ import {
   PdfViewerBody,
   PdfViewerShell,
   ZoomControls,
-} from "react-pdfjs-viewer/ui";
+} from "@brandenco/react-pdfjs-viewer/ui";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { CSSProperties, ReactNode } from "react";
 import { expect, waitFor } from "storybook/test";
 
 import {

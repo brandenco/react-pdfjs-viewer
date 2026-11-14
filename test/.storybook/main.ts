@@ -23,10 +23,16 @@ const config: StorybookConfig = {
         // Stories import the package by name, but run against the library's source.
         // Most specific first: aliases match by prefix.
         alias: [
-          { find: /^react-pdfjs-viewer\/headless$/, replacement: source("headless.ts") },
-          { find: /^react-pdfjs-viewer\/ui$/, replacement: source("ui.ts") },
-          { find: /^react-pdfjs-viewer\/(core|ui)\.css$/, replacement: source("css/$1.css") },
-          { find: /^react-pdfjs-viewer$/, replacement: source("index.ts") },
+          {
+            find: /^@brandenco\/react-pdfjs-viewer\/headless$/,
+            replacement: source("headless.ts"),
+          },
+          { find: /^@brandenco\/react-pdfjs-viewer\/ui$/, replacement: source("ui.ts") },
+          {
+            find: /^@brandenco\/react-pdfjs-viewer\/(core|ui)\.css$/,
+            replacement: source("css/$1.css"),
+          },
+          { find: /^@brandenco\/react-pdfjs-viewer$/, replacement: source("index.ts") },
         ],
       },
     });

@@ -1,5 +1,5 @@
 // The default look, imported the way an app would. (Its sources, so no :where() wrapping.)
-import "react-pdfjs-viewer/ui.css";
+import "@brandenco/react-pdfjs-viewer/ui.css";
 import type { Preview } from "@storybook/react-vite";
 
 const preview: Preview = {

@@ -1,10 +1,3 @@
-// Reading the document: properties and permissions, page labels, your own data with
-// `useDocumentData`, an outline tree of your own, and the store for imperative access.
-//
-// Outline, labels, properties and permissions are read on first use, once per document,
-// and shared by every component that asks.
-import type { PDFDocumentProxy } from "pdfjs-dist";
-import type { ReactNode } from "react";
 import {
   PdfPages,
   PdfViewerProvider,
@@ -19,7 +12,14 @@ import {
   type Outline,
   type OutlineItem,
   type PdfSource,
-} from "react-pdfjs-viewer/headless";
+} from "@brandenco/react-pdfjs-viewer/headless";
+// Reading the document: properties and permissions, page labels, your own data with
+// `useDocumentData`, an outline tree of your own, and the store for imperative access.
+//
+// Outline, labels, properties and permissions are read on first use, once per document,
+// and shared by every component that asks.
+import type { PDFDocumentProxy } from "pdfjs-dist";
+import type { ReactNode } from "react";
 
 import { workerSrc } from "../pdf-worker.ts";
 

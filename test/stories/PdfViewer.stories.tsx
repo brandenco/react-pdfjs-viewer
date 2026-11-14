@@ -1,5 +1,5 @@
+import { PdfViewer, type PdfViewerProps } from "@brandenco/react-pdfjs-viewer";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { PdfViewer, type PdfViewerProps } from "react-pdfjs-viewer";
 import { expect, spyOn, waitFor, within } from "storybook/test";
 
 import {

@@ -1,8 +1,8 @@
 /*
  * react-pdfjs-viewer UI styles: the look of the default viewer. Includes core.css.
  *
- *   import "react-pdfjs-viewer/ui.css";
- *   @import "react-pdfjs-viewer/ui.css" layer(components);   (placed in your cascade)
+ *   import "@brandenco/react-pdfjs-viewer/ui.css";
+ *   @import "@brandenco/react-pdfjs-viewer/ui.css" layer(components);   (placed in your cascade)
  *
  * Overriding: every selector is wrapped in :where() in the published file, so any rule
  * of yours wins over these, even in the same layer. For colors and spacing, set the

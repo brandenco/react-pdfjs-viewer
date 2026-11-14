@@ -1,9 +1,9 @@
+import type { PdfSource } from "@brandenco/react-pdfjs-viewer/headless";
+import { PdfViewer } from "@brandenco/react-pdfjs-viewer/ui";
 // The complete viewer: toolbar, sidebar (thumbnails and outline), pages and search, in
 // one component. It fills its container, so the container needs a height.
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { useState, type ReactNode } from "react";
-import type { PdfSource } from "react-pdfjs-viewer/headless";
-import { PdfViewer } from "react-pdfjs-viewer/ui";
 
 import { workerSrc } from "../pdf-worker.ts";
 

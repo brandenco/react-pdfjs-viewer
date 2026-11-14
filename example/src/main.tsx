@@ -1,10 +1,10 @@
+import type { PdfSource } from "@brandenco/react-pdfjs-viewer/headless";
 // The example app's shell: a list of examples and a document picker. Each example is
 // self-contained in src/examples/ and gets the chosen document as `src`.
 import { StrictMode, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import type { PdfSource } from "react-pdfjs-viewer/headless";
 
-import "react-pdfjs-viewer/ui.css";
+import "@brandenco/react-pdfjs-viewer/ui.css";
 import "./app.css";
 import { CompleteViewer } from "./examples/CompleteViewer.tsx";
 import { ComposedViewer } from "./examples/ComposedViewer.tsx";

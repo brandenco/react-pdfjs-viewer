@@ -20,7 +20,7 @@ function packageAliases(): { find: RegExp; replacement: string }[] {
   );
   return Object.entries(pkg.exports).map(([subpath, target]) => {
     const file = typeof target === "string" ? target : target.import;
-    const specifier = pkg.name + subpath.slice(1); // "./ui" → "react-pdfjs-viewer/ui"
+    const specifier = pkg.name + subpath.slice(1); // "./ui" → "@brandenco/react-pdfjs-viewer/ui"
     return {
       find: new RegExp(`^${specifier.replaceAll(/[.*+?^${}()|[\]\\/]/g, "\\$&")}$`),
       replacement: new URL(file, root).pathname,
@@ -102,27 +102,27 @@ const HEADLESS_APP = (from: string): string => `
 `;
 
 const HOOKS_APP = `
-  import { PdfViewerProvider, usePageNavigation } from "react-pdfjs-viewer/headless";
+  import { PdfViewerProvider, usePageNavigation } from "@brandenco/react-pdfjs-viewer/headless";
   function Next() { const { nextPage } = usePageNavigation(); return <button onClick={nextPage}>›</button>; }
   export default () => <PdfViewerProvider src="/a.pdf"><Next /></PdfViewerProvider>;
 `;
 
 const VIEWER_APP = `
-  import { PdfViewer } from "react-pdfjs-viewer/ui";
+  import { PdfViewer } from "@brandenco/react-pdfjs-viewer/ui";
   export default () => <PdfViewer src="/a.pdf" />;
 `;
 
 describe("consumer bundles", { timeout: 30_000 }, () => {
   test("headless subpath ships no UI code", async () => {
-    const { js, css } = await bundle(HEADLESS_APP("react-pdfjs-viewer/headless"));
+    const { js, css } = await bundle(HEADLESS_APP("@brandenco/react-pdfjs-viewer/headless"));
     expect(js).toContain("rpv-pages");
     expect(js).not.toMatch(UI_JS);
     expect(css).toBe(""); // styles are the app's to import
   });
 
   test("the root entry tree-shakes to the same headless bundle", async () => {
-    const fromRoot = await bundle(HEADLESS_APP("react-pdfjs-viewer"));
-    const fromHeadless = await bundle(HEADLESS_APP("react-pdfjs-viewer/headless"));
+    const fromRoot = await bundle(HEADLESS_APP("@brandenco/react-pdfjs-viewer"));
+    const fromHeadless = await bundle(HEADLESS_APP("@brandenco/react-pdfjs-viewer/headless"));
     expect(fromRoot.js).not.toMatch(UI_JS);
     expect(fromRoot.css).toBe("");
     expect(fromRoot.gzip).toBe(fromHeadless.gzip);
@@ -142,8 +142,8 @@ describe("consumer bundles", { timeout: 30_000 }, () => {
 
   test("a single UI control doesn't pull in the whole viewer", async () => {
     const { js, css } = await bundle(`
-      import { PdfViewerProvider, PdfPages } from "react-pdfjs-viewer/headless";
-      import { ZoomControls } from "react-pdfjs-viewer/ui";
+      import { PdfViewerProvider, PdfPages } from "@brandenco/react-pdfjs-viewer/headless";
+      import { ZoomControls } from "@brandenco/react-pdfjs-viewer/ui";
       export default () => <PdfViewerProvider src="/a.pdf"><ZoomControls /><PdfPages /></PdfViewerProvider>;
     `);
     expect(css).toBe("");
@@ -160,7 +160,7 @@ describe("consumer bundles", { timeout: 30_000 }, () => {
   // so it isn't counted. Raise a budget deliberately, along with the feature that needs it.
   test.each([
     ["hooks only", HOOKS_APP, 6_000],
-    ["headless pages", HEADLESS_APP("react-pdfjs-viewer/headless"), 13_500],
+    ["headless pages", HEADLESS_APP("@brandenco/react-pdfjs-viewer/headless"), 13_500],
     ["complete viewer", VIEWER_APP, 23_500],
   ])("size budget: %s", async (name, source, budget) => {
     const { gzip } = await bundle(source, { minify: true });
@@ -177,9 +177,9 @@ async function exportsOf(specifier: string): Promise<string[]> {
 describe("package entry points", { timeout: 30_000 }, () => {
   test("the root entry exports exactly headless + ui", async () => {
     const [all, headless, ui] = await Promise.all([
-      exportsOf("react-pdfjs-viewer"),
-      exportsOf("react-pdfjs-viewer/headless"),
-      exportsOf("react-pdfjs-viewer/ui"),
+      exportsOf("@brandenco/react-pdfjs-viewer"),
+      exportsOf("@brandenco/react-pdfjs-viewer/headless"),
+      exportsOf("@brandenco/react-pdfjs-viewer/ui"),
     ]);
     expect(headless).toContain("PdfViewerProvider");
     expect(headless).toContain("PdfPages");

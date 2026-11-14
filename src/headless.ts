@@ -1,6 +1,6 @@
-// `react-pdfjs-viewer/headless`: the viewer engine, its hooks, and the rendering
+// `@brandenco/react-pdfjs-viewer/headless`: the viewer engine, its hooks, and the rendering
 // primitives. Nothing here imports the opinionated UI. Styles are imported by the app
-// (react-pdfjs-viewer/core.css or ui.css), never by these modules.
+// (@brandenco/react-pdfjs-viewer/core.css or ui.css), never by these modules.
 
 // Provider and state access
 export {

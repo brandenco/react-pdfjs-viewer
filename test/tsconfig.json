@@ -13,9 +13,9 @@
     "allowImportingTsExtensions": true,
     // Type against the library's source rather than a possibly stale dist/.
     "paths": {
-      "react-pdfjs-viewer": ["../src/index.ts"],
-      "react-pdfjs-viewer/headless": ["../src/headless.ts"],
-      "react-pdfjs-viewer/ui": ["../src/ui.ts"]
+      "@brandenco/react-pdfjs-viewer": ["../src/index.ts"],
+      "@brandenco/react-pdfjs-viewer/headless": ["../src/headless.ts"],
+      "@brandenco/react-pdfjs-viewer/ui": ["../src/ui.ts"]
     }
   },
   "include": [".", ".storybook", "../scripts"]

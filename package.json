@@ -1,8 +1,25 @@
 {
-  "name": "react-pdfjs-viewer",
-  "version": "0.0.0",
+  "name": "@brandenco/react-pdfjs-viewer",
+  "version": "0.1.0",
   "description": "Headless-friendly, virtualized React PDF viewer built on pdfjs-dist",
+  "keywords": [
+    "headless",
+    "pdf",
+    "pdf-viewer",
+    "pdfjs",
+    "react",
+    "virtualized"
+  ],
+  "homepage": "https://github.com/brandenco/react-pdfjs-viewer#readme",
+  "bugs": {
+    "url": "https://github.com/brandenco/react-pdfjs-viewer/issues"
+  },
   "license": "MIT",
+  "author": "Branden Colen",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brandenco/react-pdfjs-viewer.git"
+  },
   "files": [
     "dist",
     "src"
@@ -29,6 +46,9 @@
     "./core.css": "./dist/core.css",
     "./ui.css": "./dist/ui.css",
     "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p . && node scripts/build-css.ts",

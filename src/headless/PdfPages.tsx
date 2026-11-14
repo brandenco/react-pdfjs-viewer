@@ -534,8 +534,8 @@ function useWarnWithoutCoreStyles(containerRef: RefObject<HTMLElement | null>): 
     if (getComputedStyle(container).getPropertyValue("--_rpv-core").trim() !== "") return;
     hasWarnedAboutStyles = true;
     console.warn(
-      'react-pdfjs-viewer: styles not found. Import "react-pdfjs-viewer/ui.css" (the ' +
-        'default look) or "react-pdfjs-viewer/core.css" (just what the viewer needs to work).',
+      'react-pdfjs-viewer: styles not found. Import "@brandenco/react-pdfjs-viewer/ui.css" (the ' +
+        'default look) or "@brandenco/react-pdfjs-viewer/core.css" (just what the viewer needs to work).',
     );
   }, [containerRef]);
 }

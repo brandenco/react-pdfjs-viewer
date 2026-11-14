@@ -1,11 +1,4 @@
-// Your own toolbar from the default toolbar's parts. Each part only uses public hooks,
-// and `ToolbarButton` gives your own buttons the same look and accessible behavior.
-//
-// Parts: SidebarToggleButton, PageControls, ZoomControls, CursorModeSwitch,
-// SearchToggleButton, RotateButton, FullscreenButton, PrintButton, DownloadButton,
-// MoreActionsMenu (rotate, full screen, print and download in a menu) and ToolbarButton.
-import type { ReactNode } from "react";
-import { useZoom, type PdfSource } from "react-pdfjs-viewer/headless";
+import { useZoom, type PdfSource } from "@brandenco/react-pdfjs-viewer/headless";
 import {
   CursorModeSwitch,
   DownloadButton,
@@ -16,7 +9,14 @@ import {
   SidebarToggleButton,
   ToolbarButton,
   ZoomControls,
-} from "react-pdfjs-viewer/ui";
+} from "@brandenco/react-pdfjs-viewer/ui";
+// Your own toolbar from the default toolbar's parts. Each part only uses public hooks,
+// and `ToolbarButton` gives your own buttons the same look and accessible behavior.
+//
+// Parts: SidebarToggleButton, PageControls, ZoomControls, CursorModeSwitch,
+// SearchToggleButton, RotateButton, FullscreenButton, PrintButton, DownloadButton,
+// MoreActionsMenu (rotate, full screen, print and download in a menu) and ToolbarButton.
+import type { ReactNode } from "react";
 
 import { workerSrc } from "../pdf-worker.ts";
 

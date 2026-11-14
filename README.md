@@ -32,14 +32,14 @@ Features:
 Peer dependencies: `react` / `react-dom` 19+ and `pdfjs-dist` 6.x (tested on 6.0 through 6.5).
 
 ```sh
-npm install react-pdfjs-viewer pdfjs-dist
+npm install @brandenco/react-pdfjs-viewer pdfjs-dist
 ```
 
 ```tsx
+import { PdfViewer } from "@brandenco/react-pdfjs-viewer/ui";
 import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url"; // see "pdf.js worker" below
-import { PdfViewer } from "react-pdfjs-viewer/ui";
 
-import "react-pdfjs-viewer/ui.css"; // once, anywhere in your app; see "Styling"
+import "@brandenco/react-pdfjs-viewer/ui.css"; // once, anywhere in your app; see "Styling"
 
 <div style={{ height: 800 }}>
   <PdfViewer src="/file.pdf" workerSrc={workerSrc} />
@@ -88,13 +88,13 @@ and you can open your own PDF.
 
 ## Entry points
 
-| Import                        | What's in it                                                                                                                  |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `react-pdfjs-viewer/headless` | The provider, the store, every hook, and the rendering primitives `PdfPages` and `PdfThumbnails`.                             |
-| `react-pdfjs-viewer/ui`       | The opinionated components: `PdfViewer`, `PdfToolbar` and its buttons, `PdfSidebar`, `PdfOutline`, `PdfSearchBar`, the shell. |
-| `react-pdfjs-viewer`          | Both of the above.                                                                                                            |
-| `react-pdfjs-viewer/core.css` | The styles the viewer needs to work.                                                                                          |
-| `react-pdfjs-viewer/ui.css`   | `core.css` plus the default look.                                                                                             |
+| Import                                   | What's in it                                                                                                                  |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `@brandenco/react-pdfjs-viewer/headless` | The provider, the store, every hook, and the rendering primitives `PdfPages` and `PdfThumbnails`.                             |
+| `@brandenco/react-pdfjs-viewer/ui`       | The opinionated components: `PdfViewer`, `PdfToolbar` and its buttons, `PdfSidebar`, `PdfOutline`, `PdfSearchBar`, the shell. |
+| `@brandenco/react-pdfjs-viewer`          | Both of the above.                                                                                                            |
+| `@brandenco/react-pdfjs-viewer/core.css` | The styles the viewer needs to work.                                                                                          |
+| `@brandenco/react-pdfjs-viewer/ui.css`   | `core.css` plus the default look.                                                                                             |
 
 No JavaScript module imports CSS: you import one of the two stylesheets yourself (see
 "Styling"). Production bundlers drop whatever JavaScript you don't use, from any entry
@@ -138,7 +138,7 @@ have one. In your own sidebar, switch between `<PdfThumbnails>` and `<PdfOutline
 
 Build any interface on the hooks. They must be used inside `<PdfViewerProvider>`, and
 `<PdfPages>` (or your own renderer, see below) shows the pages. Nothing from
-`react-pdfjs-viewer/ui` ends up in your bundle. Import `core.css` for the page layout,
+`@brandenco/react-pdfjs-viewer/ui` ends up in your bundle. Import `core.css` for the page layout,
 text selection and search highlights, and style everything else yourself. See
 [`Headless.tsx`](example/src/examples/Headless.tsx).
 
@@ -232,10 +232,10 @@ refuses when the document disallows printing, unless you pass
 
 Import one stylesheet, once (in your app's entry, or a global CSS file):
 
-| Stylesheet                    | Use it when                                                                                                                                                                                                                                    |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `react-pdfjs-viewer/ui.css`   | You use the UI components and want the default look. Includes `core.css`.                                                                                                                                                                      |
-| `react-pdfjs-viewer/core.css` | You style everything yourself (headless, or the UI components restyled from scratch). Only what the viewer needs to work: page layout for virtualization, the selectable text and link layers, search highlights, the thumbnail list's layout. |
+| Stylesheet                               | Use it when                                                                                                                                                                                                                                    |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@brandenco/react-pdfjs-viewer/ui.css`   | You use the UI components and want the default look. Includes `core.css`.                                                                                                                                                                      |
+| `@brandenco/react-pdfjs-viewer/core.css` | You style everything yourself (headless, or the UI components restyled from scratch). Only what the viewer needs to work: page layout for virtualization, the selectable text and link layers, search highlights, the thumbnail list's layout. |
 
 Without either, `<PdfPages>` warns in the console. Every rule is in a cascade layer
 (`rpv.core`, `rpv.ui`) and every selector is wrapped in `:where()`, so it has zero
@@ -247,7 +247,7 @@ specificity. Your styles win:
 
   ```css
   @import "tailwindcss";
-  @import "react-pdfjs-viewer/ui.css" layer(components);
+  @import "@brandenco/react-pdfjs-viewer/ui.css" layer(components);
   ```
 
   Even in the same layer as yours, our zero-specificity rules lose to any selector you

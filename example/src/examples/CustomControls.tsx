@@ -1,3 +1,12 @@
+import {
+  PdfPages,
+  PdfViewerProvider,
+  useFindShortcut,
+  usePageField,
+  useSearchField,
+  type PdfSource,
+  type SearchOptions,
+} from "@brandenco/react-pdfjs-viewer/headless";
 // The default UI's interaction logic, as hooks that return props to spread on your own
 // elements, so your controls behave like the built-in ones:
 //
@@ -7,15 +16,6 @@
 //   match, Escape closes; plus result counts for the eye and for screen readers.
 // - useFindShortcut: Cmd/Ctrl+F inside the element opens your search, not the browser's.
 import { useRef, type ReactNode } from "react";
-import {
-  PdfPages,
-  PdfViewerProvider,
-  useFindShortcut,
-  usePageField,
-  useSearchField,
-  type PdfSource,
-  type SearchOptions,
-} from "react-pdfjs-viewer/headless";
 
 import { workerSrc } from "../pdf-worker.ts";
 

@@ -1,3 +1,13 @@
+import {
+  PdfPages,
+  PdfViewerProvider,
+  useCursorMode,
+  useRotation,
+  useZoom,
+  type PageOverlayInfo,
+  type PdfSource,
+  type ViewportRect,
+} from "@brandenco/react-pdfjs-viewer/headless";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   createContext,
@@ -9,16 +19,6 @@ import {
   type PointerEvent,
   type ReactNode,
 } from "react";
-import {
-  PdfPages,
-  PdfViewerProvider,
-  useCursorMode,
-  useRotation,
-  useZoom,
-  type PageOverlayInfo,
-  type PdfSource,
-  type ViewportRect,
-} from "react-pdfjs-viewer/headless";
 import { expect, waitFor } from "storybook/test";
 
 import {

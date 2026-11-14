@@ -1,12 +1,3 @@
-// Any interface, built on the hooks and the rendering primitives (`PdfPages`,
-// `PdfThumbnails`). Nothing from `react-pdfjs-viewer/ui` is imported, so none of it ends
-// up in your bundle. A headless app imports `react-pdfjs-viewer/core.css` (page layout,
-// text selection, search highlights) and styles everything else itself; this example
-// app imports ui.css once for all its pages, which includes core.css.
-//
-// Each hook subscribes only to the state it returns, and actions (`nextPage`, `zoomIn`,
-// …) keep their identity across renders, so they're safe to pass straight to `onClick`.
-import type { ReactNode } from "react";
 import {
   PdfPages,
   PdfThumbnails,
@@ -17,7 +8,16 @@ import {
   useRotation,
   useZoom,
   type PdfSource,
-} from "react-pdfjs-viewer/headless";
+} from "@brandenco/react-pdfjs-viewer/headless";
+// Any interface, built on the hooks and the rendering primitives (`PdfPages`,
+// `PdfThumbnails`). Nothing from `@brandenco/react-pdfjs-viewer/ui` is imported, so none of it ends
+// up in your bundle. A headless app imports `@brandenco/react-pdfjs-viewer/core.css` (page layout,
+// text selection, search highlights) and styles everything else itself; this example
+// app imports ui.css once for all its pages, which includes core.css.
+//
+// Each hook subscribes only to the state it returns, and actions (`nextPage`, `zoomIn`,
+// …) keep their identity across renders, so they're safe to pass straight to `onClick`.
+import type { ReactNode } from "react";
 
 import { workerSrc } from "../pdf-worker.ts";
 

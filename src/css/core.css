@@ -4,8 +4,8 @@
  * thumbnail list's layout. No colors or decoration beyond the highlights; those are in
  * ui.css, which includes this file.
  *
- * Import it once: `import "react-pdfjs-viewer/core.css"`, or
- * `@import "react-pdfjs-viewer/core.css" layer(your-layer);` to place it in your cascade.
+ * Import it once: `import "@brandenco/react-pdfjs-viewer/core.css"`, or
+ * `@import "@brandenco/react-pdfjs-viewer/core.css" layer(your-layer);` to place it in your cascade.
  * In the published file every selector is wrapped in :where(), so any rule of yours wins
  * over these, even inside the same layer.
  */
