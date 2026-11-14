@@ -81,6 +81,7 @@ export function useDetailCanvas(
     let renderTask: RenderTask | undefined;
     let pendingCanvas: HTMLCanvasElement | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let renderGeneration = 0;
 
     /** The part of the page in view, in CSS px from its top-left corner. */
     function visibleRegion(): Region | null {
@@ -104,11 +105,16 @@ export function useDetailCanvas(
     }
 
     async function render(region: Region): Promise<void> {
+      const generation = ++renderGeneration;
       renderTask?.cancel();
+      renderTask = undefined;
       if (pendingCanvas) releaseCanvas(pendingCanvas);
+      pendingCanvas = undefined;
 
       const page = await doc.getPage(pageIndex + 1);
       signal.throwIfAborted();
+      // A newer render started while this one waited for the page; it has nothing to cancel.
+      if (generation !== renderGeneration) return;
       const viewport = page.getViewport({ scale: cssScale, rotation: page.rotate + rotation });
 
       // The region at the screen's density, unless that's over the cap.

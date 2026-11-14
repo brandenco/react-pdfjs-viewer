@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ChangeEvent, type KeyboardEvent } from "react";
 
+import { usePdfViewerState, usePdfViewerStore } from "./context.tsx";
 import { useSearch, type Search } from "./hooks.ts";
 import { isImeConfirmation } from "./keyboard.ts";
 
@@ -55,11 +56,23 @@ export function useSearchField(options: SearchFieldOptions = {}): SearchField {
   const [isTyping, setIsTyping] = useState(false);
   const onEscape = options.onEscape ?? (() => search.setOpen(false));
 
-  const startSearch = search.search;
+  const store = usePdfViewerStore();
+  // A new document (or the first one, if the user typed while it loaded) is searched
+  // for what's in the field: loading a document clears the store's search.
+  const doc = usePdfViewerState((state) => state.document);
   useEffect(() => {
-    const timer = setTimeout(() => void startSearch(query), debounce);
+    const timer = setTimeout(() => {
+      const current = store.getState().search;
+      // Already searched for this (the bar opened on an existing search, say): keep its
+      // results and active match.
+      if (current.query === query && current.status !== "idle") return;
+      // Keep options the app set (case sensitivity, …) rather than resetting them.
+      store.search(query, current.options).catch(reportError);
+    }, debounce);
     return () => clearTimeout(timer);
-  }, [query, debounce, startSearch]);
+    // `doc` isn't read here; a new document is what makes the search stale.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [query, debounce, store, doc]);
 
   useEffect(() => {
     if (!isTyping) return;

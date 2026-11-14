@@ -1,6 +1,13 @@
 "use client";
 
-import { useId, useRef, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 
 import { usePdfViewerState } from "../headless/context.tsx";
 import { useCursorMode, useDownload, useRotation } from "../headless/hooks.ts";
@@ -41,6 +48,8 @@ function Menu(props: StyleProps): ReactNode {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menu = useMenuButton(triggerRef, menuRef);
+  const closeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
 
   const hasDocument = usePdfViewerState((state) => state.document !== null);
   const { rotateClockwise } = useRotation();
@@ -101,7 +110,11 @@ function Menu(props: StyleProps): ReactNode {
             onClick={(event) => {
               cursor.toggle();
               const fromPointer = event.detail > 0;
-              setTimeout(() => menu.close(fromPointer), CHECK_FEEDBACK_MS);
+              clearTimeout(closeTimer.current);
+              closeTimer.current = setTimeout(() => {
+                // Unless the menu closed meanwhile: then focus has moved on, so leave it.
+                if (menuRef.current?.matches(":popover-open")) menu.close(fromPointer);
+              }, CHECK_FEEDBACK_MS);
             }}
             onKeyDown={(event) => {
               if (event.key !== " ") return;

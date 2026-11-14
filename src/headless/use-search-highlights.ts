@@ -1,7 +1,7 @@
 "use client";
 
 import type { TextLayer } from "pdfjs-dist";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { applyHighlights } from "../core/highlights.ts";
 import { storeInternals } from "../core/store.ts";
@@ -57,25 +57,57 @@ interface PageMatches {
 
 const NO_MATCHES: PageMatches = { ranges: [], activeMatch: null };
 
-/** This page's slice of the search results. */
+/**
+ * This page's slice of the search results. Each search progress report creates a new
+ * `matches` array, but a page's matches all arrive in one report: the previous result
+ * is kept while it's the same, so pages whose matches didn't change keep their
+ * highlights instead of redoing them several times a second.
+ */
 function usePageMatches(pageIndex: number): PageMatches {
   const matches = usePdfViewerState((state) => state.search.matches);
   const activeIndex = usePdfViewerState((state) => state.search.activeIndex);
+  const latest = useMemo(
+    () => pageMatches(matches, activeIndex, pageIndex),
+    [matches, activeIndex, pageIndex],
+  );
 
-  return useMemo(() => {
-    const first = firstMatchOnOrAfter(matches, pageIndex);
-    if (matches[first]?.pageIndex !== pageIndex) return NO_MATCHES;
+  // React's "adjust state while rendering" pattern: keep the earlier object until the
+  // slice actually changes.
+  const [stable, setStable] = useState(latest);
+  if (stable !== latest && !isSamePageMatches(stable, latest)) {
+    setStable(latest);
+    return latest;
+  }
+  return stable;
+}
 
-    const ranges: TextRange[] = [];
-    let activeMatch: SearchMatch | null = null;
-    for (let index = first; matches[index]?.pageIndex === pageIndex; index++) {
-      const match = matches[index]!;
-      const isActive = index === activeIndex;
-      if (isActive) activeMatch = match;
-      ranges.push({ start: match.start, end: match.end, isActive });
-    }
-    return { ranges, activeMatch };
-  }, [matches, activeIndex, pageIndex]);
+function pageMatches(
+  matches: readonly SearchMatch[],
+  activeIndex: number,
+  pageIndex: number,
+): PageMatches {
+  const first = firstMatchOnOrAfter(matches, pageIndex);
+  if (matches[first]?.pageIndex !== pageIndex) return NO_MATCHES;
+
+  const ranges: TextRange[] = [];
+  let activeMatch: SearchMatch | null = null;
+  for (let index = first; matches[index]?.pageIndex === pageIndex; index++) {
+    const match = matches[index]!;
+    const isActive = index === activeIndex;
+    if (isActive) activeMatch = match;
+    ranges.push({ start: match.start, end: match.end, isActive });
+  }
+  return { ranges, activeMatch };
+}
+
+function isSamePageMatches(a: PageMatches, b: PageMatches): boolean {
+  if (a.activeMatch !== b.activeMatch || a.ranges.length !== b.ranges.length) return false;
+  return a.ranges.every((range, index) => {
+    const other = b.ranges[index]!;
+    return (
+      range.start === other.start && range.end === other.end && range.isActive === other.isActive
+    );
+  });
 }
 
 /** Binary search: matches are sorted by page. */

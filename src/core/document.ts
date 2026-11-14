@@ -48,8 +48,16 @@ export async function* readPageGeometries(
     }
     // Batches run one after another on purpose, to leave the worker free for visible pages.
     // oxlint-disable-next-line no-await-in-loop
-    const loaded = await Promise.all(pages);
-    yield loaded.map((page) => [page.pageNumber - 1, readPageGeometry(page)]);
+    const loaded = await Promise.allSettled(pages);
+    // A page that fails to load (a damaged page tree, say) keeps its estimated size; the
+    // rest of the document stays viewable.
+    const batch: [pageIndex: number, geometry: PageGeometry][] = [];
+    for (const result of loaded) {
+      if (result.status === "fulfilled") {
+        batch.push([result.value.pageNumber - 1, readPageGeometry(result.value)]);
+      }
+    }
+    yield batch;
 
     // oxlint-disable-next-line no-await-in-loop
     await yieldToMain("background");

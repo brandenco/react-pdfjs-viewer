@@ -105,15 +105,16 @@ export async function printDocument(
     const frameWindow = frame.contentWindow;
     if (!frameWindow) throw new Error("Couldn't create the print frame");
     const listeners = new AbortController();
-    const closed = new Promise<void>((resolve) => {
-      const done = (): void => resolve();
-      frameWindow.addEventListener("afterprint", done, { signal: listeners.signal });
-      // A fallback for browsers that don't fire `afterprint` for iframes: the dialog
-      // closing hands focus back to the page.
-      window.addEventListener("focus", done, { signal: listeners.signal });
-    });
+    const { promise: closed, resolve: done } = Promise.withResolvers<void>();
+    frameWindow.addEventListener("afterprint", () => done(), { signal: listeners.signal });
+    // A fallback for browsers that don't fire `afterprint` for iframes: the dialog
+    // closing hands focus back to the page.
+    window.addEventListener("focus", () => done(), { signal: listeners.signal });
     frameWindow.focus();
     frameWindow.print();
+    // Focus may return to the frame rather than the page. Listened for only now, so the
+    // `focus()` call above can't count as the dialog closing.
+    frameWindow.addEventListener("focus", () => done(), { signal: listeners.signal });
     // `print()` blocks until the dialog closes in most browsers. Where it doesn't, the
     // frame must stay until the dialog closes, or there'd be nothing left to print.
     await closed;
