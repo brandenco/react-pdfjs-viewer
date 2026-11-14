@@ -5,3 +5,4 @@ example-dist
 *storybook.log
 *.tsbuildinfo
 .DS_Store
+coverage

@@ -144,6 +144,46 @@ export const Search: Story = {
   },
 };
 
+/** Browsers without the CSS Custom Highlight API get matches wrapped in `<mark>`. */
+export const SearchWithoutHighlightApi: Story = {
+  beforeEach() {
+    const original = Object.getOwnPropertyDescriptor(window, "Highlight");
+    Reflect.deleteProperty(window, "Highlight");
+    return () => {
+      if (original) Object.defineProperty(window, "Highlight", original);
+    };
+  },
+  async play({ canvas, canvasElement, userEvent }) {
+    await waitForDocument(canvas, 40);
+    await expect("Highlight" in window).toBe(false);
+    await userEvent.click(canvas.getByRole("button", { name: "Search" }));
+    const input = canvas.getByRole("searchbox", { name: "Find in document" });
+    await userEvent.type(input, "Milestone");
+    await waitFor(() => expect(input).toHaveAccessibleDescription("Result 1 of 4"), {
+      timeout: 5000,
+    });
+
+    // The first match is marked as active and scrolled into view; the text is unchanged.
+    const pages = canvas.getByRole("region", { name: "Document" });
+    const active = await waitFor(() => {
+      const found = canvasElement.querySelector<HTMLElement>("mark.rpv-mark-active");
+      if (!found) throw new Error("no active mark");
+      return found;
+    });
+    await expect(active).toHaveTextContent(/^Milestone$/);
+    await waitFor(() => expect(isInView(active, pages)).toBe(true));
+    const textItem = active.parentElement!;
+    const text = textItem.textContent;
+
+    // Closing the search puts the plain text back.
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(canvasElement.querySelector("mark")).toBeNull());
+    await expect(textItem).toBeInTheDocument();
+    await expect(textItem.childElementCount).toBe(0);
+    await expect(textItem.textContent).toBe(text);
+  },
+};
+
 export const SearchShortcut: Story = {
   async play({ canvas, userEvent }) {
     await waitForDocument(canvas, 40);
@@ -231,6 +271,73 @@ export const CursorMode: Story = {
     await userEvent.keyboard("{ArrowLeft}");
     await expect(textMode).toBeChecked();
     await expect(pages).toHaveAttribute("data-cursor", "text");
+  },
+};
+
+/** Hand mode: dragging the page list scrolls it; links and switching modes end the drag. */
+export const HandPan: Story = {
+  args: { document: "40 pages with extras", initialScale: "page-width" },
+  async play({ canvas, canvasElement, userEvent }) {
+    await waitForDocument(canvas, 40);
+    await waitForRenderedPage(canvasElement);
+    const pages = canvasElement.querySelector<HTMLElement>(".rpv-pages")!;
+    const textMode = canvas.getByRole("radio", { name: "Text selection" });
+    const handMode = canvas.getByRole("radio", { name: "Hand tool" });
+    await userEvent.click(handMode);
+
+    // Dragging up scrolls down by the same distance, and marks the list while dragging.
+    const view = pages.getBoundingClientRect();
+    const x = view.x + view.width / 2;
+    const y = view.y + view.height / 2;
+    const start = pages.scrollTop;
+    await userEvent.pointer([
+      { keys: "[MouseLeft>]", target: pages, coords: { x, y } },
+      { target: pages, coords: { x, y: y - 120 } },
+    ]);
+    await expect(pages).toHaveAttribute("data-dragging");
+    await expect(pages.scrollTop).toBeCloseTo(start + 120, 0);
+    await userEvent.pointer({ keys: "[/MouseLeft]", target: pages, coords: { x, y: y - 120 } });
+    await expect(pages).not.toHaveAttribute("data-dragging");
+
+    // Further moves without a button pressed don't scroll.
+    const afterDrag = pages.scrollTop;
+    await userEvent.pointer({ target: pages, coords: { x, y: y - 220 } });
+    await expect(pages.scrollTop).toBe(afterDrag);
+
+    // Links stay clickable: a drag that starts on one doesn't pan.
+    pages.scrollTop = 0;
+    const link = await waitFor(
+      () => {
+        const found = canvasElement.querySelector<HTMLElement>(
+          '.rpv-page[data-page-number="1"] .rpv-annotation-layer a',
+        );
+        if (!found) throw new Error("no link rendered");
+        return found;
+      },
+      { timeout: 10_000 },
+    );
+    const at = link.getBoundingClientRect();
+    await userEvent.pointer([
+      { keys: "[MouseLeft>]", target: link, coords: { x: at.x + 2, y: at.y + 2 } },
+      { target: link, coords: { x: at.x + 2, y: at.y - 80 } },
+    ]);
+    await expect(pages).not.toHaveAttribute("data-dragging");
+    await expect(pages.scrollTop).toBe(0);
+    // Releasing it is a click, which follows the link as usual.
+    await userEvent.pointer({ keys: "[/MouseLeft]", target: link });
+    await waitFor(() => expect(pages.scrollTop).toBeGreaterThan(0));
+
+    // Switching back to text selection mid-drag ends the drag.
+    const beforeSwitch = pages.scrollTop;
+    await userEvent.pointer({ keys: "[MouseLeft>]", target: pages, coords: { x, y } });
+    await expect(pages).toHaveAttribute("data-dragging");
+    handMode.focus();
+    await userEvent.keyboard("{ArrowLeft}");
+    await expect(textMode).toBeChecked();
+    await expect(pages).not.toHaveAttribute("data-dragging");
+    await userEvent.pointer({ target: pages, coords: { x, y: y - 100 } });
+    await expect(pages.scrollTop).toBe(beforeSwitch);
+    await userEvent.pointer({ keys: "[/MouseLeft]", target: pages });
   },
 };
 

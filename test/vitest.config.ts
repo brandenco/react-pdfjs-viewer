@@ -6,6 +6,14 @@ import { root, storybookProject } from "./vitest.shared.ts";
 export default defineConfig({
   root,
   test: {
+    // Only collected with `pnpm test:coverage` (--coverage).
+    coverage: {
+      provider: "v8",
+      include: ["src/**"],
+      // Entry points that only re-export, type declarations and CSS have no code to run.
+      exclude: ["src/index.ts", "src/headless.ts", "src/ui.ts", "src/core/types.ts", "src/css/**"],
+      reporter: ["text", "html"],
+    },
     projects: [
       {
         test: {
