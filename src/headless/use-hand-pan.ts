@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type PointerEvent } from "react";
+import { useEffect, useRef, type PointerEvent } from "react";
 
 type PointerHandler = (event: PointerEvent<HTMLElement>) => void;
 
@@ -16,7 +16,24 @@ export interface HandPanHandlers {
  * scroll container. Touch is left alone, since touch already scrolls natively.
  */
 export function useHandPan(isEnabled: boolean): HandPanHandlers {
-  const dragStart = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number }>(null);
+  const dragStart = useRef<{
+    container: HTMLElement;
+    pointerId: number;
+    x: number;
+    y: number;
+    scrollLeft: number;
+    scrollTop: number;
+  }>(null);
+
+  // Switched off mid-drag: the handlers that would end the drag are gone, so end it here.
+  useEffect(() => {
+    if (isEnabled) return;
+    const start = dragStart.current;
+    if (!start) return;
+    dragStart.current = null;
+    endDrag(start.container, start.pointerId);
+  }, [isEnabled]);
+
   if (!isEnabled) return {};
 
   function onPointerDown(event: PointerEvent<HTMLElement>): void {
@@ -29,6 +46,8 @@ export function useHandPan(isEnabled: boolean): HandPanHandlers {
 
     const container = event.currentTarget;
     dragStart.current = {
+      container,
+      pointerId: event.pointerId,
       x: event.clientX,
       y: event.clientY,
       scrollLeft: container.scrollLeft,
@@ -52,13 +71,13 @@ export function useHandPan(isEnabled: boolean): HandPanHandlers {
   function onPointerEnd(event: PointerEvent<HTMLElement>): void {
     if (!dragStart.current) return;
     dragStart.current = null;
-
-    const container = event.currentTarget;
-    delete container.dataset["dragging"];
-    if (container.hasPointerCapture(event.pointerId)) {
-      container.releasePointerCapture(event.pointerId);
-    }
+    endDrag(event.currentTarget, event.pointerId);
   }
 
   return { onPointerDown, onPointerMove, onPointerUp: onPointerEnd, onPointerCancel: onPointerEnd };
+}
+
+function endDrag(container: HTMLElement, pointerId: number): void {
+  delete container.dataset["dragging"];
+  if (container.hasPointerCapture(pointerId)) container.releasePointerCapture(pointerId);
 }

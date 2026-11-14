@@ -205,7 +205,13 @@ function useThumbnailImage(
       await renderTask.promise;
       signal.throwIfAborted();
 
-      store.thumbnails.set(pageIndex, width, await createImageBitmap(target));
+      const bitmap = await createImageBitmap(target);
+      // Rotating or switching documents meanwhile cleared the cache; this is stale.
+      if (signal.aborted) {
+        bitmap.close();
+        return;
+      }
+      store.thumbnails.set(pageIndex, width, bitmap);
     }
 
     const timer = setTimeout(() => {
