@@ -294,8 +294,17 @@ stable across minor versions; anything else in the markup may change.
 
 ## Development
 
-Requires pnpm 12 (pinned in `packageManager`); pnpm downloads the pinned Node runtime
-(`devEngines.runtime`, Node 26 LTS) for scripts automatically.
+Tool versions (Node 26 LTS, pnpm 12) are pinned in `mise.toml`. With
+[mise](https://mise.jdx.dev) installed:
+
+```sh
+mise install        # installs the pinned Node and pnpm
+mise run setup      # pnpm install + Chromium for the browser tests
+```
+
+mise also puts `node_modules/.bin` on your PATH, so `oxlint`, `vitest` and friends run
+without `pnpm exec`. Without mise, use pnpm 12 (pinned in `packageManager`); it downloads
+the pinned Node runtime (`devEngines.runtime`) for scripts automatically.
 
 ```sh
 pnpm install

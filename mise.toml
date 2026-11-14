@@ -1,0 +1,12 @@
+[tools]
+# Keep in step with package.json: `devEngines.runtime` (^26.13.0) and `packageManager`.
+node = "26.13"
+"npm:pnpm" = "12.18.0"
+
+[env]
+# Lets you run the project's CLIs (oxlint, oxfmt, tsc, vitest, ...) without `pnpm exec`.
+_.path = ["{{config_root}}/node_modules/.bin"]
+
+[tasks.setup]
+description = "Install dependencies and the Chromium build the browser tests use"
+run = ["pnpm install", "pnpm exec playwright install chromium"]

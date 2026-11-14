@@ -21,12 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      # Installs the pnpm version pinned in package.json's `packageManager`.
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-          cache: pnpm
+      # Installs the Node and pnpm versions pinned in mise.toml.
+      - uses: jdx/mise-action@v5
       - run: pnpm install --frozen-lockfile
       - run: pnpm build-storybook
       - uses: actions/configure-pages@v6
