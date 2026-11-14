@@ -1,0 +1,31 @@
+# Runs the same checks as `prepublishOnly` on every pull request and push to main.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to the same PR cancels the run still going for the previous one.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Installs the Node and pnpm versions pinned in mise.toml.
+      - uses: jdx/mise-action@v5
+      - run: pnpm install --frozen-lockfile
+      # Chromium and its system libraries, for the story tests.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm check
+      # Also builds dist/, which test:bundle and lint:pkg check.
+      - run: pnpm test
+      - run: pnpm lint:pkg
