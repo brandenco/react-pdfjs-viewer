@@ -1,0 +1,391 @@
+/* The example app's own styles. Unlayered, so they win over the viewer's (which live
+   in the `rpv` cascade layer) without any specificity tricks. */
+
+:root {
+  --app-bg: light-dark(#f6f7f9, #15171a);
+  --app-surface: light-dark(#ffffff, #1e2125);
+  --app-border: light-dark(#dde1e6, #33373d);
+  --app-text: light-dark(#1d2025, #e7e9ec);
+  --app-muted: light-dark(#5d6570, #9aa2ad);
+  --app-accent: light-dark(#2457d6, #7aa2ff);
+
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+  color: var(--app-text);
+  background: var(--app-bg);
+}
+
+body {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: 100dvh;
+}
+
+/* Navigation */
+
+.app-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 16px;
+  overflow-y: auto;
+  background: var(--app-surface);
+  border-inline-end: 1px solid var(--app-border);
+}
+
+.app-nav h1 {
+  margin: 0 8px;
+  font-size: 1.05rem;
+}
+
+.app-nav ul {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-nav a {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-nav a:hover {
+  background: color-mix(in srgb, var(--app-accent) 8%, transparent);
+}
+
+.app-nav a[aria-current="page"] {
+  background: color-mix(in srgb, var(--app-accent) 14%, transparent);
+}
+
+.app-nav a[aria-current="page"] strong {
+  color: var(--app-accent);
+}
+
+.app-nav a span {
+  font-size: 0.82rem;
+  color: var(--app-muted);
+}
+
+.app-document {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  padding: 12px 8px 0;
+  border-top: 1px solid var(--app-border);
+  font-size: 0.9rem;
+}
+
+.app-document p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-file {
+  position: relative;
+  padding: 6px 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.app-file:focus-within {
+  outline: 2px solid var(--app-accent);
+}
+
+.app-file input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Main area */
+
+.app-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 16px 20px 20px;
+  gap: 12px;
+}
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+}
+
+.app-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.app-header code {
+  font-size: 0.85rem;
+  color: var(--app-muted);
+}
+
+.app-example {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+@media (width < 760px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    height: auto;
+  }
+
+  .app-nav {
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--app-border);
+  }
+
+  .app-nav ul {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .app-nav a span {
+    display: none;
+  }
+
+  .app-main {
+    height: 85dvh;
+    padding-inline: 16px;
+  }
+}
+
+/* Shared by the examples */
+
+.example-column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.example-fill {
+  flex: 1;
+  min-height: 0;
+}
+
+.example-status {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--app-muted);
+}
+
+.example-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.example-search {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.example-segmented {
+  display: inline-flex;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* The headless examples: plain controls around <PdfPages>, styled here, not by ui.css. */
+
+.headless {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+}
+
+.headless-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.headless-separator {
+  align-self: stretch;
+  width: 1px;
+  background: var(--app-border);
+}
+
+.headless-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.headless-thumbnails {
+  flex: none;
+  width: 136px;
+  border-inline-end: 1px solid var(--app-border);
+}
+
+/* The headless thumbnails' current page: `data-current` is public API. */
+.headless-thumbnails .rpv-thumbnail[data-current] .rpv-thumbnail-image {
+  outline: 3px solid var(--app-accent);
+}
+
+.headless-pages {
+  flex: 1;
+  min-height: 0;
+  background: var(--app-bg);
+}
+
+/* Page overlay example */
+
+.overlay-pages[data-cursor="draw"] {
+  cursor: crosshair;
+}
+
+.overlay-surface {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.overlay-box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid rgb(220 38 38);
+  background: rgb(220 38 38 / 0.12);
+  pointer-events: none;
+}
+
+.overlay-box[data-draft] {
+  border-style: dashed;
+}
+
+/* Document data example */
+
+.data-layout {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+}
+
+.data-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 16px;
+  overflow-y: auto;
+  border-inline-end: 1px solid var(--app-border);
+  font-size: 0.9rem;
+}
+
+.data-panel h3 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+}
+
+.data-panel p {
+  margin: 0;
+}
+
+.data-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.data-list div {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 8px;
+}
+
+.data-list dt {
+  color: var(--app-muted);
+}
+
+.data-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.data-outline {
+  margin: 0;
+  padding-inline-start: 16px;
+  list-style: none;
+}
+
+.data-outline > li > button {
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.data-outline button[aria-current="location"],
+.data-outline button[data-contains-current] {
+  color: var(--app-accent);
+  font-weight: 600;
+}
+
+.data-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+@media (width < 760px) {
+  .data-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .data-panel {
+    max-height: 40dvh;
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--app-border);
+  }
+}

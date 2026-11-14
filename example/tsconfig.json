@@ -1,0 +1,21 @@
+{
+  // The example app: the library's settings plus Vite types. Type-check only.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "module": "preserve",
+    "types": ["node", "vite/client"],
+    "noEmit": true,
+    "rootDir": "..",
+    "declaration": false,
+    "declarationMap": false,
+    "isolatedDeclarations": false,
+    "allowImportingTsExtensions": true,
+    // Type against the library's source, the way Vite resolves it.
+    "paths": {
+      "react-pdfjs-viewer": ["../src/index.ts"],
+      "react-pdfjs-viewer/headless": ["../src/headless.ts"],
+      "react-pdfjs-viewer/ui": ["../src/ui.ts"]
+    }
+  },
+  "include": ["."]
+}
