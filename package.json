@@ -93,7 +93,7 @@
     "lightningcss": "^1.33.0",
     "oxfmt": "^0.78.0",
     "oxlint": "^1.93.0",
-    "oxlint-tsgolint": "^7.0.2006",
+    "oxlint-tsgolint": "^7.0.2007",
     "pdfjs-dist": "^6.5.438",
     "pdfjs-dist-6.0": "npm:pdfjs-dist@6.0.227",
     "playwright": "^1.65.0",
